@@ -2,12 +2,12 @@
 This unofficial guide tries to make the nofio working on Linux.
 
 ## Index
-- How works the nofio base
-- What do you need
-- Enjoy the nofio on Linux
+- [How works the nofio base](#how-works-the-nofio-base)
+- [What do you need to do](#what-do-you-need-to-do)
+- [Enjoy the nofio on Linux](#enjoy-the-nofio-on-linux)
 
 
-### How works the nofio base
+## How works the nofio base
 nofio bases its functioning on the VirtualHere USB share system to communicate with the PC and then with SteamVR. It's process starts when you start the nofio app.
 
 In a nutshell, VirtualHere allow to create a network, with server (the nofio base) and clients (your pc and the nofio head), to share usb devices like the Valve Index.
@@ -28,7 +28,7 @@ As you can see, the nofio app does nothing here except display the information i
 
 Thankfully, the VirtualHere client it's available on Linux too, so...we can reproduce theese steps.
 
-### What do you need
+## What do you need to do
 To start using the nofio on Linux, you need to do some task:
 
 1) download the file vhui.ini from this repo
@@ -77,7 +77,7 @@ https://github.com/user-attachments/assets/4f15f7c5-3617-412b-9e33-26c4838b7eb2
     sudo ./vhuit64_5.7.7
     ```
     
-### Enjoy the nofio on Linux
+## Enjoy the nofio on Linux
 All you have to do now when you want to go in the VR world is:
 
 1) turn on the nofio base
