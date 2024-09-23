@@ -48,6 +48,7 @@ To start using the nofio on Linux, you need to do some task:
    lsusb | grep "IMRWirelessVR"
    ```
    if returns a result like "Bus 001 Device 008: ID 04b3:4010 IBM Corp. IMRWirelessVR" it's all ok and you can go on
+   
 11) run this command to find the network interface of your nofio base
    ```
    ip addr
@@ -60,7 +61,7 @@ To start using the nofio on Linux, you need to do some task:
    ```
    (note: xx:xx:xx:xx:xx:xx is the MAC address of the nofio base and i obfuscate mine cause i'm paranoid)
    
-11) you have now to setup a network usb connection for the inferface you found and connect to it...i used the Gnome network manager in the Settings, you can use whatever you like. See the short video below
+12) you have now to setup a network usb connection for the inferface you found and connect to it...i used the Gnome network manager in the Settings, you can use whatever you like. See the short video below
     
 
 https://github.com/user-attachments/assets/4f15f7c5-3617-412b-9e33-26c4838b7eb2
