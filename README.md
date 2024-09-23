@@ -11,7 +11,7 @@ This unofficial guide tries to make the nofio working on Linux.
 nofio bases its functioning on the VirtualHere USB share system to communicate with the PC and then with SteamVR. It's process starts when you start the nofio app.
 
 In a nutshell, VirtualHere allow to create a network, with server (the nofio base) and clients (your pc and the nofio head), to share usb devices like the Valve Index.
-If you get interested on what is and how works VirtualHere, i invite you to click here to visit the official site.
+If you get interested on what is and how works VirtualHere, [i invite you to click here to visit the official site.](https://www.virtualhere.com/)
 
 Also, based on what i found, the nofio base has a ethernet interface via usb. In fact, when you connect the base (turned on) to the pc, it detect it like an ethernet network.
 
