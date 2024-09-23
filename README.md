@@ -67,7 +67,7 @@ https://github.com/user-attachments/assets/4f15f7c5-3617-412b-9e33-26c4838b7eb2
 
 
 
-13) if you have correctyly configured the network connection and you already connected to it, you shoud see an ip like 192.168.3.49: if so, you're in (...the nofio netowork)
+13) if you have correctly configured the network connection and you already connected to it, you shoud see an ip like 192.168.3.49: if so, you're in (...the nofio netowork)
 14) go to the folder where you put the VirtualHere client and run
     ```
     chmod +x vhuit64_5.7.7
