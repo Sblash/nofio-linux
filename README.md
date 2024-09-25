@@ -89,11 +89,7 @@ https://github.com/user-attachments/assets/4f15f7c5-3617-412b-9e33-26c4838b7eb2
     ```
     sudo ./vhuit64_5.7.7
     ```
-    or, if you want to run the VirtualHere client backgroud
-    ```
-    sudo ./vhuit64_5.7.7 -n
-    ```
-    I personally advice to run it normally (so with the gui) the first time, because doing so you can check if all is ok...in fact, you should see something like this
+    you should see something like this
     
     ![image](https://github.com/user-attachments/assets/c1f60576-b91e-4504-9d2d-277fca9b572b)
 
