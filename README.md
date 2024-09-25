@@ -5,6 +5,7 @@ This unofficial guide tries to make the nofio working on Linux.
 - [How works the nofio base](#how-works-the-nofio-base)
 - [What do you need to do](#what-do-you-need-to-do)
 - [Enjoy the nofio on Linux](#enjoy-the-nofio-on-linux)
+- [Troubleshooting](https://github.com/Sblash/nofio-linux/blob/main/TROUBLESHOOTING.md)
 
 
 ## How works the nofio base
