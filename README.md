@@ -72,16 +72,16 @@ To start using the nofio on Linux, you need to do some task:
     link/ether xx:xx:xx:xx:xx:xx brd ff:ff:ff:ff:ff:ff
    ```
    (note: xx:xx:xx:xx:xx:xx is the MAC address of the nofio base and i obfuscate mine cause i'm paranoid)
-   
-8) you have now to setup a network usb connection for the inferface you found and connect to it...i used the Gnome network manager in the Settings, you can use whatever you like. See the short video below
+8) check if your pc is already connected to the usb ethernet of the nofio with the ip 192.168.3.49 : if you have already it, you can skip to the step 11
+9) you have now to setup a network usb connection for the inferface you found and connect to it...i used the Gnome network manager in the Settings, you can use whatever you like. See the short video below
     
 
 https://github.com/user-attachments/assets/4f15f7c5-3617-412b-9e33-26c4838b7eb2
 
 
 
-9) if you have correctly configured the network connection and you already connected to it, you shoud see an ip like 192.168.3.49: if so, you're in (...the nofio netowork)
-10) go to the folder where you put the VirtualHere client and run
+10) if you have correctly configured the network connection and you already connected to it, you shoud see an ip like 192.168.3.49: if so, you're in (...the nofio netowork)
+11) go to the folder where you put the VirtualHere client and run
     ```
     chmod +x vhuit64_5.7.7
     ```
@@ -89,6 +89,14 @@ https://github.com/user-attachments/assets/4f15f7c5-3617-412b-9e33-26c4838b7eb2
     ```
     sudo ./vhuit64_5.7.7
     ```
+    or, if you want to run the VirtualHere client backgroud
+    ```
+    sudo ./vhuit64_5.7.7 -n
+    ```
+    I personally advice to run it normally (so with the gui) the first time, because doing so you can check if all is ok...in fact, you should see something like this
+    ![image](https://github.com/user-attachments/assets/c1f60576-b91e-4504-9d2d-277fca9b572b)
+
+12) It is important that all the device listed are "In use by you". If some are not, you can set in "In use by you" just double clicking on it with mouse left.
     
 ## Enjoy the nofio on Linux
 All you have to do now when you want to go in the VR world is:
