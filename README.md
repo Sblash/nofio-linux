@@ -33,24 +33,35 @@ Thankfully, the VirtualHere client it's available on Linux too, so...we can repr
 To start using the nofio on Linux, you need to do some task:
 
 1) download the file vhui.ini from this repo
-6) download the VirtualHere client (you can find it in this repo as vhuit64_5.7.7 or in the official site)
-7) place the VirtualHere client and the vhui.ini file wherever you want but in the same folder
-8) make sure that your Linux installation has the following kernel modules:
+2) download the VirtualHere client (you can find it in this repo as vhuit64_5.7.7 or in the official site)
+3) place the VirtualHere client and the vhui.ini file wherever you want but in the same folder
+4) make sure that your Linux installation has the following kernel modules loaded:
 
    - usbip_core
    - cdc_ether
    - usbnet
      
-   if you haven't theese kernel modules installed, then install them
+   you can check this with the commands
+   ```
+   lsmod | grep "usbip_core"
+   lsmod | grep "cdc_ether"
+   lsmod | grep "usbnet"
+   ```
+   if you find out that some of them are not loaded in the kernel (empty output), you have to load them with the command
+   ```
+   sudo modprobe usbip_core
+   sudo modprobe cdc_ether
+   sudo modprobe usbnet
+   ```
   
-9) connect the nofio base app and turn on it
-10) when the led is solid blue, run in a terminal
+5) connect the nofio base app and turn on it
+6) when the led is solid blue, run in a terminal
    ```
    lsusb | grep "IMRWirelessVR"
    ```
    if returns a result like "Bus 001 Device 008: ID 04b3:4010 IBM Corp. IMRWirelessVR" it's all ok and you can go on
    
-11) run this command to find the network interface of your nofio base
+7) run this command to find the network interface of your nofio base
    ```
    ip addr
    ```
@@ -62,15 +73,15 @@ To start using the nofio on Linux, you need to do some task:
    ```
    (note: xx:xx:xx:xx:xx:xx is the MAC address of the nofio base and i obfuscate mine cause i'm paranoid)
    
-12) you have now to setup a network usb connection for the inferface you found and connect to it...i used the Gnome network manager in the Settings, you can use whatever you like. See the short video below
+8) you have now to setup a network usb connection for the inferface you found and connect to it...i used the Gnome network manager in the Settings, you can use whatever you like. See the short video below
     
 
 https://github.com/user-attachments/assets/4f15f7c5-3617-412b-9e33-26c4838b7eb2
 
 
 
-13) if you have correctly configured the network connection and you already connected to it, you shoud see an ip like 192.168.3.49: if so, you're in (...the nofio netowork)
-14) go to the folder where you put the VirtualHere client and run
+9) if you have correctly configured the network connection and you already connected to it, you shoud see an ip like 192.168.3.49: if so, you're in (...the nofio netowork)
+10) go to the folder where you put the VirtualHere client and run
     ```
     chmod +x vhuit64_5.7.7
     ```
