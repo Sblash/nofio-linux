@@ -94,9 +94,10 @@ https://github.com/user-attachments/assets/4f15f7c5-3617-412b-9e33-26c4838b7eb2
     sudo ./vhuit64_5.7.7 -n
     ```
     I personally advice to run it normally (so with the gui) the first time, because doing so you can check if all is ok...in fact, you should see something like this
+    
     ![image](https://github.com/user-attachments/assets/c1f60576-b91e-4504-9d2d-277fca9b572b)
 
-12) It is important that all the device listed are "In use by you". If some are not, you can set in "In use by you" just double clicking on it with mouse left.
+13) It is important that all the device listed are "In use by you". If some are not, you can set in "In use by you" just double clicking on it with mouse left.
     
 ## Enjoy the nofio on Linux
 All you have to do now when you want to go in the VR world is:
