@@ -60,8 +60,9 @@ To start using the nofio on Linux, you need to do some task:
    lsusb | grep "IMRWirelessVR"
    ```
    if returns a result like "Bus 001 Device 008: ID 04b3:4010 IBM Corp. IMRWirelessVR" it's all ok and you can go on
+   if no result returns, maybe you can find it with the name "Nofio Wireless Base"
    
-7) run this command to find the network interface of your nofio base
+8) run this command to find the network interface of your nofio base
    ```
    ip addr
    ```
@@ -72,8 +73,8 @@ To start using the nofio on Linux, you need to do some task:
     link/ether xx:xx:xx:xx:xx:xx brd ff:ff:ff:ff:ff:ff
    ```
    (note: xx:xx:xx:xx:xx:xx is the MAC address of the nofio base and i obfuscate mine cause i'm paranoid)
-8) check if your pc is already connected to the usb ethernet of the nofio with the ip 192.168.3.49 : if you have already it, you can skip to the step 11
-9) you have now to setup a network usb connection for the inferface you found and connect to it...i used the Gnome network manager in the Settings, you can use whatever you like. See the short video below
+9) check if your pc is already connected to the usb ethernet of the nofio with the ip 192.168.3.49 : if you have already it, you can skip to the step 11
+10) you have now to setup a network usb connection for the inferface you found and connect to it...i used the Gnome network manager in the Settings, you can use whatever you like. See the short video below
     
 
 https://github.com/user-attachments/assets/4f15f7c5-3617-412b-9e33-26c4838b7eb2
@@ -81,7 +82,7 @@ https://github.com/user-attachments/assets/4f15f7c5-3617-412b-9e33-26c4838b7eb2
 
 
 10) if you have correctly configured the network connection and you already connected to it, you shoud see an ip like 192.168.3.49: if so, you're in (...the nofio netowork)
-11) go to the folder where you put the VirtualHere client and run
+11) Turn on the Nofio head, go to the folder where you put the VirtualHere client and run
     ```
     chmod +x vhuit64_5.7.7
     ```
@@ -93,7 +94,7 @@ https://github.com/user-attachments/assets/4f15f7c5-3617-412b-9e33-26c4838b7eb2
     
     ![image](https://github.com/user-attachments/assets/c1f60576-b91e-4504-9d2d-277fca9b572b)
 
-13) It is important that all the device listed are "In use by you". If some are not, you can set in "In use by you" just double clicking on it with mouse left.
+12) It is important that all the device listed are "In use by you". If some are not, you can set in "In use by you" just double clicking on it with mouse left.
     
 ## Enjoy the nofio on Linux
 All you have to do now when you want to go in the VR world is:
