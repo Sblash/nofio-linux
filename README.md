@@ -33,7 +33,7 @@ Thankfully, the VirtualHere client it's available on Linux too, so...we can repr
 To start using the nofio on Linux, you need to do some task:
 
 1) download the file vhui.ini from this repo
-2) download the VirtualHere client (you can find it in this repo as vhuit64_5.7.7 or in the official site)
+2) download the VirtualHere client (you can find it in this repo as vhuit64_5.7.7 or in the [official site](https://www.virtualhere.com/))
 3) place the VirtualHere client and the vhui.ini file wherever you want but in the same folder
 4) make sure that your Linux installation has the following kernel modules loaded:
 
