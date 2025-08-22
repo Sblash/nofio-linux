@@ -1,13 +1,13 @@
 # Troubleshooting
-If you have some problems, try to check here, maybe there is something for you.
+If you have problems, try checking here and maybe there will be something for you.
 
-If you can't find here any solution, feel free to open an issue.
+If you can't find any solutions, feel free to open an issue.
 
 ## Index
 - [I can't find the kernel modules with lsmod and modprobe gives me errors!](#i-cant-find-the-kernel-modules-with-lsmod-and-modprobe-gives-me-errors)
 
 ## I can't find the kernel modules with lsmod and modprobe gives me errors!
-Thanks to [ABBailey1981](https://github.com/ABBailey1981) we found this problem...and the solution too.
+Thanks to [ABBailey1981](https://github.com/ABBailey1981) we found this problem... and the solution too.
 We tried this on Pop! OS.
 
 If when you run
@@ -22,7 +22,7 @@ First try to check if the kernel modules exists with the command:
 ```
 modinfo <usbip_core>
 ```
-if you see some output like this, it means that kernel modules exist:
+If you see some output like this, it means that kernel modules exist:
 ```
 '$ modinfo usbip_core
 filename:       /lib/modules/6.9.3-76060903-generic/kernel/drivers/usb/usbip/usbip-core.ko.zst
@@ -43,7 +43,7 @@ signature:      [...truncated....]
 parm:           usbip_debug_flag:debug flags (defined in usbip_common.h) (ulong)`
 ```
  
-So if it is all ok, you have to follow these steps taken from [this guide](https://support.system76.com/articles/package-manager-pop/)
+So if that's all ok, you have to follow these steps taken from [this guide](https://support.system76.com/articles/package-manager-pop/)
 ```
 sudo apt clean
 sudo apt update
@@ -53,4 +53,4 @@ sudo apt full-upgrade
 sudo apt autoremove --purge
 ```
 
-Then reboot the pc and retry to follow the guide.
+Then reboot the PC and retry following the guide.
