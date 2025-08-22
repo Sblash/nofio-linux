@@ -18,7 +18,7 @@ Also, based on what I found, the nofio base has an ethernet interface via USB. I
 So this is more or less what happens when you use nofio on Windows:
 
 1) After the nofio base turns on, the PC detects a network interface
-2) The PC connects to the interface, so it has the access to the VirtualHere network
+2) The PC connects to the interface, so it has access to the VirtualHere network
 3) You start the nofio app (and in the background the VirtualHere client kicks in)
 4) The VirtualHere client tries to connect to IP 192.168.3.1:7575
 5) When VirtualHere successfully connects to that IP, it allows your PC to access the Index itself (if the nofio head is turned on)
@@ -59,14 +59,14 @@ To start using the nofio on Linux, you need to:
    lsusb | grep "IMRWirelessVR"
    ```
    If it returns a result like "Bus 001 Device 008: ID 04b3:4010 IBM Corp. IMRWirelessVR" it's all OK and you can move on.
-   If no result returns, you can maybe find it with the name "Nofio Wireless Base" instead.
+   If no result returns, you might find it with the name "Nofio Wireless Base" instead.
    
 8) Run this command to find the network interface of your nofio base:
    ```
    ip addr
    ```
 
-   You have to search something like this:
+   You have to find something like this:
    ```
    enp0s20f0u1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UNKNOWN group default qlen 1000
     link/ether xx:xx:xx:xx:xx:xx brd ff:ff:ff:ff:ff:ff
@@ -80,7 +80,7 @@ https://github.com/user-attachments/assets/4f15f7c5-3617-412b-9e33-26c4838b7eb2
 
 
 
-10) If you have correctly configured the network connection and connected to it, you shoud see an IP like 192.168.3.49 listed if you type "ifconfig" in the terminal. If so, you're in (... the nofio network)
+10) If you have correctly configured the network connection and connected to it, you should see an IP like 192.168.3.49 listed when you enter "ifconfig" in the terminal. If so, you're in (... the nofio network)
 11) Turn on the Nofio head. In the terminal, navigate to the folder where you put the VirtualHere client and run:
     ```
     chmod +x vhuit64_5.7.7
