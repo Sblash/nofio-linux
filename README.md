@@ -6,7 +6,7 @@ Open source implementation for Nofio wireless VR adapter (Valve Index).
 
 This project aims to create a complete open source solution for the Nofio wireless adapter, enabling native Linux support and open source firmware.
 
-**Current Phase:** 0 - Project Setup (Complete)
+**Current Phase:** 1 - Complete Analysis (In Progress)
 
 ## Overview
 
@@ -40,6 +40,7 @@ nofio-linux/
 │   ├── PROTOCOL.md             # Communication protocol
 │   ├── ORIGINAL_README.md      # Original guide
 │   └── TROUBLESHOOTING.md      # Troubleshooting guide
+├── scripts/                    # Analysis and automation scripts
 ├── firmware/                   # Firmware analysis and original files
 └── driver/                     # SteamVR driver implementation
 ```
@@ -62,11 +63,10 @@ nofio-linux/
 - [x] Create initial documentation templates
 
 ### Phase 1: Complete Analysis (1-2 weeks)
-- [ ] Extract all information from PDB
+- [ ] Extract all information from PDB - Scripts in ./scripts/
 - [ ] Decompress firmware
 - [ ] Disassemble all Thumb functions
 - [ ] Document firmware call graph
-- [ ] Search for original repository
 
 ### Phase 2: Open Source SteamVR Driver (2-4 weeks)
 - [ ] Driver skeleton (OpenVR SDK)
