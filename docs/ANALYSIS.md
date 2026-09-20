@@ -702,53 +702,46 @@ Offset  Range       Hex Values                     Description
 
 ### Phase 0: Project Setup (1 day)
 
-- [x] Clone GitHub repository: nofio-linux
-- [x] Directory structure (docs/, firmware/, driver/, utility/)
-- [x] Move current README (renamed to docs/ORIGINAL_README.md) and TROUBLESHOOTING to docs/
-- [x] Files: README.md, CONTRIBUTING.md, LICENSE (GPLv3)
-- [x] Initial documentation:
-  - docs/ARCHITECTURE.md
-  - docs/ANALYSIS.md (this file)
-  - docs/PROTOCOL.md
+- [x] Clone repository
+- [x] Create directory structure
+- [x] Move existing documentation
+- [x] Create README, CONTRIBUTING, LICENSE
+- [x] Create initial documentation templates
 
-### Phase 1: Complete Analysis (1-2 weeks)
+### Phase 1: Open Source Utility
 
-- [ ] **Extract all from PDB** (symbols, functions, classes) - Tools identified: pdbparse, Ghidra
-- [ ] **Decompress firmware** (binwalk, firmware-mod-kit)
-- [ ] **Disassemble all Thumb functions** (Ghidra/Capstone)
-- [ ] **Document firmware call graph**
+- [ ] Analysis Windows utility app and reverse engineering
+- [ ] Open source app reimplementation for Linux
+- [ ] Reading nofio-base status
+- [ ] Pairing (nofio-base <-> nofio-head)
+- [ ] Firmware update
+- [ ] Logging and diagnostics
 
-### Phase 2: Open Source SteamVR Driver (2-4 weeks)
+### Phase 2: Complete Analysis driver
 
-- [ ] **Driver skeleton** (OpenVR SDK)
-- [ ] **Implement HmdDriverFactory**
-- [ ] **Device management** (ITrackedDeviceServerDriver)
-- [ ] **Wireless properties** (battery, status, etc.)
-- [ ] **VirtualHere integration** (optional, temporary phase)
-- [ ] **Hardware detection** (VID:PID 04b3:4010)
+- [ ] Extract all information from PDB - Scripts in ./scripts/
+- [ ] Driver skeleton (OpenVR SDK)
+- [ ] Implementation driver in the new utility app
+- [ ] Implement HmdDriverFactory
+- [ ] Device management (ITrackedDeviceServerDriver)
+- [ ] Wireless properties (battery, status, etc.)
+- [ ] Hardware detection (VID:PID 04b3:4010)
+- [ ] VirtualHere integration
 
-### Phase 3: Open Source Utility (1-2 weeks)
+### Phase 3: Open Source Firmware
 
-- [ ] **User interface** (Qt/GTK or .NET Core)
-- [ ] **Configuration** (JSON file, like nofio.json)
-- [ ] **Firmware update** (protocol to be reversed)
-- [ ] **Dashboard overlay** (SteamVR)
-- [ ] **Logging and diagnostics**
+- [ ] Complete firmware decompression
+- [ ] Disassemble all Thumb functions
+- [ ] Document firmware call graph
+- [ ] QNX6 filesystem analysis
+- [ ] ARM Thumb code reverse engineering
+- [ ] Port to open source framework (Zephyr, FreeRTOS)
+- [ ] QCA2066 WiFi support
 
-### Phase 4: Direct Protocol (1-3 months)
+### Phase 4: Optimizations and fixes
 
-- [ ] **USB traffic analysis** (with Wireshark/USBPcap)
-- [ ] **Reverse VirtualHere protocol**
-- [ ] **Direct USB implementation** (bypass VirtualHere)
-- [ ] **Latency optimization** (critical for VR)
-
-### Phase 5: Open Source Firmware (3-12 months)
-
-- [ ] **Complete firmware decompression**
-- [ ] **QNX6 filesystem analysis** (head_BOOT.BIN)
-- [ ] **ARM Thumb code reverse engineering** (Ghidra/IDA)
-- [ ] **Port to open source framework** (Zephyr, FreeRTOS)
-- [ ] **QCA2066 support** (Linux WiFi driver)
+- [ ] Fix current nofio firmware bugs
+- [ ] Latency optimization
 
 ---
 

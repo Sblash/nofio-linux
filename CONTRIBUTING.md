@@ -44,6 +44,12 @@ Thank you for your interest in contributing to the nofio-linux project! This doc
 - Use clear and concise language
 - Include code examples when helpful
 
+### Discovery Documentation Rule
+
+Every discovery must be documented in a markdown file within the relevant folder. For example, if you are working on the utility app, add a markdown file in the "utility" folder. The documentation must specify:
+- Which **phase** it belongs to (Phase 0, Phase 1, Phase 2, Phase 3, or Phase 4)
+- The **topic** or subject of the discovery
+
 ## Commit Message Format
 
 ```
