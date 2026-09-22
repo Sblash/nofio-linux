@@ -8,6 +8,8 @@ This project aims to create a complete open source solution for the Nofio wirele
 
 **Current Phase:** 1 - Open Source Utility (In Progress)
 
+**Hardware:** Original Nofio hardware (base station + head adapter + Valve Index) is available for dynamic analysis and testing.
+
 ## Overview
 
 Nofio is a wireless adapter for the Valve Index VR headset that uses VirtualHere for USB-over-IP communication between the base station and the PC. This project seeks to:
@@ -16,6 +18,15 @@ Nofio is a wireless adapter for the Valve Index VR headset that uses VirtualHere
 - Recreate firmware as open source
 - Enable community development and bug fixes
 - Prevent hardware abandonment (e-waste)
+
+## Technology Stack
+
+| Component | Technology | Notes |
+|-----------|-----------|-------|
+| Utility app | Dart + Flutter | Cross-platform GUI (replaces original .NET 7 app) |
+| SteamVR driver | C++ (OpenVR SDK) | Native driver implementing ITrackedDeviceServerDriver_005 / IServerTrackedDeviceProvider_004 |
+| Firmware tools | Python 3 | Analysis scripts (binwalk, capstone, PDB parsing) |
+| USB access | libusb (via Dart FFI) | Direct USB communication, bypassing VirtualHere |
 
 ## Quick Start
 
@@ -41,8 +52,9 @@ nofio-linux/
 │   ├── ORIGINAL_README.md      # Original guide
 │   └── TROUBLESHOOTING.md      # Troubleshooting guide
 ├── scripts/                    # Analysis and automation scripts
+├── utility/                   # Open source utility app (Dart + Flutter)
 ├── firmware/                   # Firmware analysis and original files
-└── driver/                     # SteamVR driver implementation
+└── driver/                     # SteamVR driver implementation (C++)
 ```
 
 ## Hardware Information
@@ -70,25 +82,27 @@ nofio-linux/
 - [ ] Firmware update
 - [ ] Logging and diagnostics
 
-### Phase 2: Complete Analysis driver
+### Phase 2: SteamVR Driver + Dynamic Analysis
 - [ ] Extract all information from PDB - Scripts in ./scripts/
+- [ ] USB packet capture (Wireshark/usbmon on Linux, USBPcap on Windows)
+- [ ] Reverse engineer direct USB protocol (bypassing VirtualHere)
 - [ ] Driver skeleton (OpenVR SDK)
-- [ ] Implementation driver in the new utility app
 - [ ] Implement HmdDriverFactory
-- [ ] Device management (ITrackedDeviceServerDriver)
+- [ ] Device management (ITrackedDeviceServerDriver_005)
+- [ ] Device provider (IServerTrackedDeviceProvider_004)
 - [ ] Wireless properties (battery, status, etc.)
 - [ ] Hardware detection (VID:PID 04b3:4010)
-- [ ] VirtualHere integration
+- [ ] VirtualHere integration (interim solution)
 
 
 ### Phase 3: Open Source Firmware
 - [ ] Complete firmware decompression
-- [ ] Disassemble all Thumb functions
+- [ ] Disassemble ARM Thumb code (Ghidra/IDA)
 - [ ] Document firmware call graph
-- [ ] QNX6 filesystem analysis
-- [ ] ARM Thumb code reverse engineering
+- [ ] QNX6 filesystem analysis (head_BOOT.BIN)
+- [ ] Validate PGP signature / boot verification
 - [ ] Port to open source framework (Zephyr, FreeRTOS)
-- [ ] QCA2066 WiFi support
+- [ ] QCA2066 WiFi driver support
 
 ### Phase 4: Optimizations and fixes
 - [ ] Fix current nofio firmware bugs

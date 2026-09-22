@@ -115,42 +115,56 @@ driver/
 
 ### 2. Utility Application
 
-The utility provides GUI and management functionality.
+The utility provides GUI and management functionality, replacing the original `nofioUtility.exe` (.NET 7) with a cross-platform Dart + Flutter application.
 
 #### Architecture
 
 ```
 ┌─────────────────────────────────────────────┐
-│                 MainWindow                       │
-│  + MainWindow()                                │
-│  + InitializeComponents()                      │
-│  + UpdateStatus()                              │
-└─────────────────────┬────────────────────────┘
-                      │
-          ┌───────────┴───────────┐
-          ▼                       ▼
+│                 MainApp (Flutter)                │
+│  + main()                                       │
+│  + build()                                      │
+│  + initState()                                  │
+└────────────────────┬────────────────────────┘
+                     │
+         ┌───────────┴───────────┐
+         ▼                       ▼
 ┌─────────────────────┐ ┌─────────────────────┐
-│   SettingsManager    │ │   FirmwareUpdater    │
-│  + LoadSettings()    │ │  + CheckForUpdates() │
-│  + SaveSettings()    │ │  + DownloadFirmware()│
-│  + GetSetting()      │ │  + InstallFirmware() │
+│   SettingsService    │ │   FirmwareService   │
+│  + loadSettings()    │ │  + checkUpdates()  │
+│  + saveSettings()    │ │  + download()     │
+│  + getSetting()      │ │  + install()       │
 └─────────────────────┘ └─────────────────────┘
+         │                       │
+         ▼                       ▼
+┌─────────────────────────────────────────────┐
+│              DeviceService (FFI)                 │
+│  + getStatus()      → libusb / network          │
+│  + pairDevices()    → base ↔ head              │
+│  + readDiagnostics()                            │
+└─────────────────────────────────────────────┘
 ```
 
 #### File Structure
 
 ```
 utility/
-├── CMakeLists.txt
-├── include/
-│   └── settings.h              # Settings interface
-├── src/
-│   ├── main.cpp                # Entry point
-│   ├── mainwindow.cpp           # Main window
-│   ├── settings.cpp             # Settings manager
-│   └── firmware_updater.cpp     # Firmware update logic
-└── resources/
-    └── icons/                   # Application icons
+├── pubspec.yaml                # Dart dependencies
+├── lib/
+│   ├── main.dart               # Entry point
+│   ├── app.dart                # App widget
+│   ├── services/
+│   │   ├── device_service.dart # Device communication (FFI to libusb)
+│   │   ├── settings_service.dart # Settings management
+│   │   └── firmware_service.dart # Firmware update logic
+│   ├── models/
+│   │   ├── device_info.dart    # Device info model
+│   │   └── device_status.dart  # Status model
+│   └── widgets/
+│       ├── status_panel.dart   # Status display
+│       └── settings_panel.dart  # Settings UI
+└── assets/
+    └── icons/                  # Application icons
 ```
 
 ### 3. Firmware Analysis Tools
@@ -225,21 +239,25 @@ struct FirmwareHeader {
 
 ## Build System
 
-The project uses CMake for cross-platform builds.
+The project uses multiple build systems:
+
+- **Driver:** CMake (C++, cross-platform)
+- **Utility:** Flutter build system (`flutter build`, Dart)
+- **Firmware tools:** Python 3 (standalone scripts)
 
 ### Dependencies
 
-- **OpenVR SDK** - SteamVR driver interfaces
-- **libusb** - USB access on Linux
-- **Qt 5/6** - GUI framework (for utility)
-- **C++17** - Minimum C++ standard
-- **Python 3** - For analysis scripts
+- **OpenVR SDK** - SteamVR driver interfaces (C++)
+- **libusb** - USB access on Linux (via Dart FFI for utility, direct for driver)
+- **Dart + Flutter** - Cross-platform GUI for utility app
+- **C++17** - Minimum C++ standard for driver
+- **Python 3** - For firmware analysis scripts
 
-### CMake Targets
+### Build Targets
 
-- `nofio-driver` - SteamVR driver library
-- `nofio-utility` - GUI utility application
-- `firmware-tools` - Firmware analysis tools
+- `nofio-driver` - SteamVR driver library (C++, CMake)
+- `nofio-utility` - GUI utility application (Dart/Flutter, `flutter build`)
+- `firmware-tools` - Firmware analysis tools (Python 3)
 
 ## Platform Support
 

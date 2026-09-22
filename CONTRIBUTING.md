@@ -29,6 +29,14 @@ Thank you for your interest in contributing to the nofio-linux project! This doc
 
 ## Coding Standards
 
+### Technology Stack
+
+| Component | Language | Build |
+|-----------|----------|-------|
+| Utility app | Dart | Flutter |
+| SteamVR driver | C++ | CMake |
+| Firmware analysis | Python 3 | Standalone scripts |
+
 ### General
 
 - Use consistent indentation
