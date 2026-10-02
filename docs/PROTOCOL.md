@@ -116,7 +116,7 @@ Device bytes: `PC = 0`, `Base = 1`, `Head = 2`, `PC2 = 3`, `Max = 4`.
 
 | Port | Service | Notes |
 |------|---------|-------|
-| 22 | `dropbear_2019.78` | SSH, **publickey only** (`-s` disables passwords); `root` login exists but requires a vendor key (`FINAL_SSH_KEYS=1`, `/etc/build.conf`). Host keys: ssh-rsa + ecdsa-nistp256 (per-device). No known path to the private key; the authorized public keys are not readable through the control protocol |
+| 22 | `dropbear_2019.78` | SSH, **publickey only** (`-s` disables passwords); `root` login exists but requires a vendor key (`FINAL_SSH_KEYS=1`, `/etc/build.conf`). Host keys: ssh-rsa + ecdsa-nistp256 (per-device). The utility **never uses SSH** — no SSH client code, libraries, or port-22 references exist anywhere in the decompiled app. Its only related behavior is `ImrDevToolMonitor`: a WMI watcher for a vendor process named `imr_devtool` on the PC; while it runs, `NofioConnection` defers its own base/head sockets. `imr_devtool` (never distributed) is the presumed consumer of this SSH channel — the factory/developer tool. The authorized public keys are not readable through the control protocol |
 | 34567 | unknown | open but does not answer the control-protocol `Connect` handshake; purpose undocumented |
 | 7575 | VirtualHere | **closed** in this state (base unpaired, head off) — likely started only when the wireless link is up |
 
