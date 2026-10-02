@@ -675,9 +675,8 @@ The following flow is confirmed by the original Linux guide and the VirtualHere 
 PC                  Base Station           Head Adapter
   │                     │                     │
   │───── USB Connect ───▶│                     │
-  │   (CDC Ethernet,      │                     │
-  │    VID:PID 04b3:4010) │                     │
-  │                     │                     │
+  │   (CDC NCM Ethernet,  │                     │
+  │    VID:PID 04b3:1234) │                     │
   │───── DHCP/Static ────▶│                     │
   │   (192.168.3.x)       │                     │
   │                     │                     │

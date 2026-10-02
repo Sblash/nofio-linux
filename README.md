@@ -115,7 +115,7 @@ nofio-linux/
 - [ ] Device management (ITrackedDeviceServerDriver_005)
 - [ ] Device provider (IServerTrackedDeviceProvider_004)
 - [ ] Wireless properties (battery, status, etc.)
-- [ ] Hardware detection (VID:PID 04b3:4010)
+- [ ] Hardware detection (VID:PID 04b3:1234 base, verified live; head TBD)
 - [ ] VirtualHere integration (interim solution)
 
 > **Note (static analysis):** the original `driver_nofio.dll` is a
