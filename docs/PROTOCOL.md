@@ -17,9 +17,13 @@ The Nofio system uses multiple layers of communication:
 
 ### USB Interface
 
-- **VID:PID:** 04b3:4010 (IBM Corp. IMRWirelessVR)
-- **Interface Class:** CDC Ethernet (USB CDC-ECM or RNDIS)
-- **Driver:** `cdc_ether` / `usbnet` on Linux
+- **VID:PID:** 04b3:1234 (verified live: "Nofio Wireless Base", IMRNext, CDC network
+  class; the value 04b3:4010 recorded earlier likely refers to the head unit
+  or another mode)
+- **Interface Class:** **USB-CDC NCM** (per the nofio v2.1.0 release notes the
+  gadget migrated from RNDIS to "USB-NCM" "for better compatibility";
+  v2.5.0 units use NCM)
+- **Driver:** `cdc_ncm` / `cdc_ether` / `usbnet` on Linux
 
 #### USB Descriptors
 
