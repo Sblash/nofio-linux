@@ -112,15 +112,88 @@ independent of VirtualHere (which only tunnels the headset's USB devices).
 
 Device bytes: `PC = 0`, `Base = 1`, `Head = 2`, `PC2 = 3`, `Max = 4`.
 
-### Other open ports on the base (live scan, 192.168.3.1)
+### Other open ports on the base (live scan, 192.168.3.1, 2026-10-02)
+
+Full TCP scan (65535 ports) finds only four listeners:
 
 | Port | Service | Notes |
 |------|---------|-------|
 | 22 | `dropbear_2019.78` | SSH, **publickey only** (`-s` disables passwords); `root` login exists but requires a vendor key (`FINAL_SSH_KEYS=1`, `/etc/build.conf`). Host keys: ssh-rsa + ecdsa-nistp256 (per-device). The utility **never uses SSH** — no SSH client code, libraries, or port-22 references exist anywhere in the decompiled app. Its only related behavior is `ImrDevToolMonitor`: a WMI watcher for a vendor process named `imr_devtool` on the PC; while it runs, `NofioConnection` defers its own base/head sockets. `imr_devtool` (never distributed) is the presumed consumer of this SSH channel — the factory/developer tool. The authorized public keys are not readable through the control protocol |
+| 5355 | LLMNR | `systemd-resolved` |
 | 34567 | unknown | open but does not answer the control-protocol `Connect` handshake; purpose undocumented |
-| 7575 | VirtualHere | **closed** in this state (base unpaired, head off) — likely started only when the wireless link is up |
+| 34566 | control protocol | documented above |
 
-*(Control port 34566 omitted — documented above.)*
+VirtualHere's 7575 was **closed** in this state (base unpaired, head off) — the
+server likely starts only when the wireless link is up. mDNS (unicast to the
+device's avahi) enumerates the advertised services:
+
+| Service | Instance | Endpoint |
+|---|---|---|
+| `_ssh._tcp.local` | `imr-nofio1` | `imr-nofio1.local:22` (A 192.168.3.1) |
+| `_sftp-ssh._tcp.local` | `imr-nofio1` | `imr-nofio1.local:22` |
+| `_imrusb._tcp.local` | `IMR VirtualHere` | `imr-nofio1.local:7575` (advertised even while closed) |
+
+### Readable messages via RequestStatus (live sweep, base fw v2.5.0)
+
+Sending `RequestStatus(body=u16 type)` for every known type and watching the
+reply (all read-only) yields:
+
+| Requested type | Reply |
+|---|---|
+| 129 BaseStatus | `Protobuf` (140) wrapping BaseStatus |
+| 131 HMDSuspended | `00` (not suspended) |
+| 145 Configuration | **`Protobuf` with the full configuration dump** (below) |
+| 146 TestFrameGenerator | empty `Protobuf` |
+| 147 VirtualHere | `Protobuf`: field1 = serial, field3 = `UNLICENSED` (VirtualHere server license status) |
+| 149 PeerInfo | `Protobuf` (2 fields) |
+| 153 VideoStatus | `Nak(VideoNotConnected)` (no head) |
+| 130, 132-133, 136, 139, 141-144, 148, 150, 152, 154-158 | `Nak(InvalidStatusRequest)` |
+| 64-67 | `Nak(InvalidStatusRequest)` (events, not pollable) |
+
+#### Configuration dump (type 145)
+
+The reply is the `Configuration` protobuf
+([docs/protos/nofio.proto](protos/nofio.proto)): sections `DefaultConf`,
+`FactoryConf`, `UserConf`, `SystemConf`, `ActualValues`, each a list of
+key/value items. Observed on the base (2026-10-02), most informative keys:
+
+```
+FactoryConf:  hw_serial = 240104-02E3-NI-b
+SystemConf:   imr_controller_log_level = 1, wi_channel = 13, wi_country = IT
+
+DefaultConf (highlights):
+  # streaming bridge (base -> head over the 60 GHz link)
+  bridge = wi  bridge_protocol = udp  bridge_port = 44444
+  packet_size = 7828  max_packet_blocks = 1280
+  bridge_drop_seconds = 20  disable_bridge = 0
+  latency_target = 6000000        # base (head: 11000000)
+  rate_control_mode = dynamic  rate_control_kp = 50  ki = 90  kd = 20
+  rate_control_hold_time = 5  recovery_time = 20  netrate_mult_percent = 1000
+  tx_queue_target = 2800000  irq_coalesce = 57
+  # wireless (wi = the base-head link, QCA2066/WiGig)
+  wi_mode = ap  wi_ap_mode = hostapd  wi_channel = 77  wi_channel_default = 77
+  wi_country = US  wi_ssid = auto  wi_psk = auto  wi_addr = 10.0.0.1/28
+  wi_hw = bdwlan02g.e66  wi_version = 5.2.0.220S  wi_owe_mode = 0
+  # USB network (the host-side gadget interface)
+  usb = proxy  usb_type = virtualhere  usb_compression = 0  usb_kmem = 0
+  usb0_addr = 192.168.3.1/24  usb0_dir = peripheral  usb0_port = B  usb0_mtu = 15300
+  usb1_addr = none  usb1_dir = peripheral  usb1_mtu = 15300
+  # foveated encoding (Index eye tracking)
+  foveation_en = 1  codec_subsample_mode = 3
+  fov_luma_intercept/slope = 420 / -3096   fov_chroma_intercept/slope = 420 / -3096
+  fov_luma_min/max_coeffs = 4 / 48         fov_chroma_min/max_coeffs = 4 / 48
+  fov_offset_left_x/y = 12 / 30  fov_offset_right_x/y = -12 / 30
+  # misc
+  platform = vr  eth0/1/2_* = (none/1500)  local_log_poll_rate = 1000
+  local_log_size = 36000  imr_controller_log_level = 2  host_manager = 0
+  pirate_mode = 0  pirate_x_offset = 52  eth0_addr = none  eth2_dhcp = 1
+```
+
+The `bridge_port = 44444` UDP stream (7828-byte packets) matches the bridge
+statistics exposed in the support report (`src_port: 44444`), and
+`BaseStatus.ChannelFreq = 6015` (live) is consistent with a 60 GHz-band
+channel — together these document the video path: raw video flows over UDP
+44444 on the wireless link while control uses TCP 34566.
 
 ### Packet framing (big-endian)
 
