@@ -2,6 +2,18 @@
 
 This document contains analysis of the Nofio firmware files.
 
+> **CORRECTION (superseded by [boot_image_format.md](boot_image_format.md)):**
+> the files are Xilinx Zynq UltraScale+ MPSoC boot images whose partition
+> data is **AES-encrypted with an eFUSE key** (entropy ~8.0 bits/byte).
+> The findings below that were derived from binwalk signatures inside the
+> encrypted regions — the "QNX6 Super Block" at 0x012D2610, the "PGP RSA Key"
+> at 0x035C87AF, the "ARM Thumb LE functions", and the "GIF image" — are
+> **false positives** on random-looking ciphertext, not real structures.
+> The header at 0x20-0x28 is the standard ZynqMP width-detection
+> (0xAA995566) / image-identifier (0x584C4E58) pair, not a custom "fU..XNLX"
+> magic. See [boot_image_format.md](boot_image_format.md) for the verified
+> boot image layout, partition table, and security analysis.
+
 ---
 
 ## Files

@@ -48,6 +48,8 @@ device-specific credentials redacted) in [docs/PROTOCOL.md](docs/PROTOCOL.md).
 ## Documentation
 
 - [Analysis Report](docs/ANALYSIS.md) - Complete reverse engineering analysis
+- [Firmware Flashing](firmware/firmware_flashing.md) - How the utility flashes firmware (static analysis of the decompiled app)
+- [Boot Image Format](firmware/boot_image_format.md) - BOOT.BIN is a secure-boot Xilinx ZynqMP image (AES eFUSE + RSA)
 - [Architecture](docs/ARCHITECTURE.md) - System architecture
 - [Protocol](docs/PROTOCOL.md) - Communication protocol
 - [Utility Codebase Analysis](docs/UTILITY_CODEBASE_ANALYSIS.md) - Analysis of the original nofioUtility.exe (decompiled)
