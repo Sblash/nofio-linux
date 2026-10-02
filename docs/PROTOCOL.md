@@ -112,6 +112,16 @@ independent of VirtualHere (which only tunnels the headset's USB devices).
 
 Device bytes: `PC = 0`, `Base = 1`, `Head = 2`, `PC2 = 3`, `Max = 4`.
 
+### Other open ports on the base (live scan, 192.168.3.1)
+
+| Port | Service | Notes |
+|------|---------|-------|
+| 22 | `dropbear_2019.78` | SSH, **publickey only** (`-s` disables passwords); `root` login exists but requires a vendor key (`FINAL_SSH_KEYS=1`, `/etc/build.conf`). Host keys: ssh-rsa + ecdsa-nistp256 (per-device). No known path to the private key; the authorized public keys are not readable through the control protocol |
+| 34567 | unknown | open but does not answer the control-protocol `Connect` handshake; purpose undocumented |
+| 7575 | VirtualHere | **closed** in this state (base unpaired, head off) — likely started only when the wireless link is up |
+
+*(Control port 34566 omitted — documented above.)*
+
 ### Packet framing (big-endian)
 
 ```

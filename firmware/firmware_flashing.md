@@ -324,7 +324,8 @@ The OS is **Buildroot Linux** — *not* QNX as previously assumed:
   (**`/usr/bin/imr_controller base` — this is the update daemon and the TCP
   protocol server**), `dnsmasq@usb0`, `hostapd@wlp1s0` (QCA WiFi, 10.0.0.0/28),
   avahi publishing `IMR VirtualHere _imrusb._tcp 7575` (mDNS), `dropbear -F -R -s`
-  (SSH, key-only), plus Jim-Tcl helpers (`ledman`, `wireless-checkd`,
+  (SSH on port 22 — publickey only; verified live, see
+  [PROTOCOL.md](../docs/PROTOCOL.md) "Other open ports"), plus Jim-Tcl helpers (`ledman`, `wireless-checkd`,
   `systemwatchd`, `imr_thermal_mon`, `imr_video_bridge_mon`).
 - Persistent storage on separate MTD partitions: `/dev/mtdblock1` (128 KB →
   `/settings`), `/dev/mtdblock2` (20 MB → `/data`); the rest is RAM.
@@ -474,5 +475,8 @@ Concrete predictions a dynamic capture could confirm or falsify:
   (0x38B4980) or in the erased gap region.
 - Whether `Setup.UpdateParadeFw` (WiFi/QCA2066 firmware) shares this flash
   path or targets the WiFi module's own storage.
-- `dropbear` SSH runs on the base (key-only, `FINAL_SSH_KEYS=1`) — with
-  which authorized keys, and on which address/interface it listens.
+- `dropbear` SSH runs on the base (key-only, `FINAL_SSH_KEYS=1`) — reachable
+  live on `192.168.3.1:22` (banner `SSH-2.0-dropbear_2019.78`; root login
+  exists; auth is **publickey only**). Which authorized keys the device
+  carries, and where the matching private keys live (likely the vendor's
+  `imr_devtool` factory tool), remains unknown.
