@@ -120,8 +120,14 @@ Full TCP scan (65535 ports) finds only four listeners:
 |------|---------|-------|
 | 22 | `dropbear_2019.78` | SSH, **publickey only** (`-s` disables passwords); `root` login exists but requires a vendor key (`FINAL_SSH_KEYS=1`, `/etc/build.conf`). Host keys: ssh-rsa + ecdsa-nistp256 (per-device). The utility **never uses SSH** — no SSH client code, libraries, or port-22 references exist anywhere in the decompiled app. Its only related behavior is `ImrDevToolMonitor`: a WMI watcher for a vendor process named `imr_devtool` on the PC; while it runs, `NofioConnection` defers its own base/head sockets. `imr_devtool` (never distributed) is the presumed consumer of this SSH channel — the factory/developer tool. The authorized public keys are not readable through the control protocol |
 | 5355 | LLMNR | `systemd-resolved` |
-| 34567 | unknown | open but does not answer the control-protocol `Connect` handshake; purpose undocumented |
+| 34567 | **head-facing control endpoint** | identified live: on TCP connect the base immediately sends a control-protocol packet `source=Base, destination=Head` carrying `Nak(3)` (`AlreadyConnected`) — this is the port the head connects to over the wireless link (from 10.0.0.2); PC connections are rejected because the real head holds the session. A `Connect` sent to it as `PC` gets no reply: it only serves head sessions |
 | 34566 | control protocol | documented above |
+
+Other network software of note (versions from the device journal): the base
+runs **dnsmasq 2.81** (started via `dnsmasq@usb0.service`) — that version is
+inside the range affected by the DNSpooq vulnerabilities (CVE-2020-25681
+through CVE-2020-25687, fixed in 2.83), reachable only from the USB network.
+Recorded for completeness; no exploitation was attempted.
 
 VirtualHere's 7575 was **closed** in this state (base unpaired, head off) — the
 server likely starts only when the wireless link is up. mDNS (unicast to the
