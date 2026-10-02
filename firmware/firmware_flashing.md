@@ -252,6 +252,32 @@ Suggested low-risk experiments (requests only; worst case is a `Nak`):
    `ActualFileName = "meta"` and plausible names, and map what the device
    is willing to serve.
 
+### 7.2 Live verification (base, firmware v2.5.0)
+
+Experiments 1-3 above were performed against a live base station
+(2026-10-02, `nofio_probe.py raw 135 ...`):
+
+| Request | Reply | Meaning |
+|---|---|---|
+| `FileType=5`, name `meta` | meta `chunks=0 final=45279` | report generated on demand (size varies between requests) |
+| chunk request (`FileType=5`, `PacketCount=i`) | `SoftwareUpdateData`, 65523 B payload | client trims the single packet to `final` size |
+| `FileType=5`, any other name | **Nak 129** (IncorrectSoftwareUpdatePacket) | name is validated — no free file resolution |
+| `FileType` = 1, 3, 4, 6, 8 | **Nak 130** (IncorrectSoftwareUpdateFile) | file types other than SupportReport are not served |
+| `FileType=2` (ImrOs), name `meta` | **Ack** | this is the *upload* channel start (no data followed; session dropped) |
+| `FileType=7` (Nothing) | meta with a small dynamic size (21-561 B) | appears to be a status/ephemeral blob, not a file |
+
+So the reverse channel is **not a generic file reader**: only the support
+report (exact name `meta`) is served, and everything else is refused with
+the two dedicated `Nak` codes. The report itself is a **ZIP** containing:
+
+- `support-report.txt` — system info, versions, configuration dumps,
+  process listing, mounts, boot `dmesg`, `journalctl`
+- `local-logger.csv` — periodic telemetry
+
+It turned out to be highly informative (see §9.0): the process listing
+reveals the whole device-side architecture, including the update daemon
+itself (`/usr/bin/imr_controller`).
+
 ## 8. Implications for the Linux reimplementation
 
 Everything needed to flash from Linux is in the client:
@@ -275,14 +301,40 @@ speculation. Confirmed facts first, then the remaining hypotheses.
 
 ### 9.0 Confirmed device architecture
 
-Both nofio units are **Xilinx Zynq UltraScale+ MPSoC** boards booting this
-chain, all components AES-encrypted (eFUSE key) and RSA-4096 signed:
+Static analysis of the shipped `base/head_BOOT.BIN`
+([boot_image_format.md](boot_image_format.md)) resolved much of the earlier
+speculation, and the live support report (§7.2) then revealed the rest.
+
+Both nofio units are **Xilinx Zynq UltraScale+ MPSoC** boards (Trenz
+**TE0803** SoM on a custom IMRNext carrier — per the FPGA bitfile name
+`nofio1-te0803-03-3ae11-a_mipi_base`) booting this chain, all components
+AES-encrypted (eFUSE key) and RSA-4096 signed:
 
 ```
 BootROM → FSBL (OCM) → PMU fw + FPGA bitstream + ATF bl31 → U-Boot → 42 MB
-OS image ("linux.ub" partition, QNX) loaded at DDR 0x10000000
+OS image ("linux.ub" partition) loaded at DDR 0x10000000
 ```
 
+The OS is **Buildroot Linux** — *not* QNX as previously assumed:
+
+- Kernel `Linux 5.10.0-nofio` (aarch64, built with gcc 9.2.1), booted with
+  `root=/dev/ram0 bootmode=qspi` — the whole system runs from an
+  **initramfs in RAM**.
+- Process tree (from the support report): systemd, `imr_controller.service`
+  (**`/usr/bin/imr_controller base` — this is the update daemon and the TCP
+  protocol server**), `dnsmasq@usb0`, `hostapd@wlp1s0` (QCA WiFi, 10.0.0.0/28),
+  avahi publishing `IMR VirtualHere _imrusb._tcp 7575` (mDNS), `dropbear -F -R -s`
+  (SSH, key-only), plus Jim-Tcl helpers (`ledman`, `wireless-checkd`,
+  `systemwatchd`, `imr_thermal_mon`, `imr_video_bridge_mon`).
+- Persistent storage on separate MTD partitions: `/dev/mtdblock1` (128 KB →
+  `/settings`), `/dev/mtdblock2` (20 MB → `/data`); the rest is RAM.
+- Build config (`/etc/build.conf`): `FINAL_SWUPDATE_KEYS=1`,
+  `FINAL_SSH_KEYS=1`, `ENCRYPTION_AUTHENTICATION=1`, `FULL_AUTHENTICATION=1`,
+  `ENCRYPT_PAIRING=1`, `RELEASE_OPTION=PRODUCTION_AND_USER_FINAL` —
+  production units ship with signature/encryption enforcement on.
+- Wireless: QCA2066 for the 2.4/5 GHz link side plus 60 GHz Wilocity-family
+  firmware on board (`wil6210.fw`, `wil6436.fw` / "Talyn") — the head-to-base
+  streaming link is WiGig-class.
 - The OS partition is stored at a **fixed flash offset 0x10A0000**, with an
   erased (0xFF) gap between the boot chain and it — the update file is a raw
   flash image over a fixed partition map.
@@ -291,9 +343,9 @@ OS image ("linux.ub" partition, QNX) loaded at DDR 0x10000000
   and the same RSA key pair signs all images.
 - The 512-byte `SHA1SUMS.SIG` matches an RSA-4096 signature, but it does
   **not** verify with the boot image keys — a separate update key must exist
-  inside the encrypted OS image. The utility never checks `.SIG` itself
-  (only the `SHA1SUMS` hashes); signature enforcement, if any, is
-  device-side.
+  inside the encrypted OS image (consistent with `FINAL_SWUPDATE_KEYS=1`).
+  The utility never checks `.SIG` itself (only the `SHA1SUMS` hashes);
+  signature enforcement, if any, is device-side.
 
 ### 9.1 Who receives and installs the update
 
@@ -399,22 +451,28 @@ Concrete predictions a dynamic capture could confirm or falsify:
 ## 10. Open questions (dynamic analysis needed)
 
 - Why the head's **right-hand** USB-C port specifically (hardware wiring).
-- VID:PID and USB class of the head's network interface (base is
-  `04b3:4010`, CDC-ECM/RNDIS assumed) — check with `lsusb` / `ip link`.
+- USB identity of the head's network interface — the base enumerates as
+  `04b3:1234` ("Nofio Wireless Base", IMRNext, CDC network class; verified
+  live); the value `04b3:4010` previously recorded in the docs likely refers
+  to the head unit or another mode.
 - Confirm or falsify the speculations in §9 with a live capture
   (`tcpdump` on `192.168.3.0/24` and `192.168.4.0/24` during an update,
   plus `lsusb`/`ip link` before/after).
-- ~~Full extraction of the QNX6 filesystem in `head_BOOT.BIN`~~ — **ruled
-  out**: the OS partition is AES-encrypted with the device's eFUSE key
-  ([boot_image_format.md](boot_image_format.md)); `firmware/qnx6_extract/`
-  cannot be filled from the shipped image. Device-side ground truth now
-  requires dynamic analysis (update capture, UART/JTAG if test points
-  exist).
+- ~~Full extraction of the "QNX6 filesystem" in `head_BOOT.BIN`~~ — **moot**:
+  the OS is Buildroot Linux (§9.0), the QNX6 lead was a binwalk false
+  positive, and the OS partition is AES-encrypted with the device's eFUSE
+  key ([boot_image_format.md](boot_image_format.md)). Device-side ground
+  truth now requires dynamic analysis (update capture, UART/JTAG on the
+  TE0803 SoM, or the report/SSH channels).
 - Whether the device verifies `SHA1SUMS.SIG` at all, and with which key
-  (the boot image keys do not verify it — separate update key pair).
-- Whether the reverse file-request channel (§7.1) can read device storage
-  beyond the support report (`FIRMWARE`, `BOARD`, ... names).
+  (the boot image keys do not verify it; `FINAL_SWUPDATE_KEYS=1` suggests
+  dedicated update keys — the tampered-manifest upload test remains open).
+- ~~Whether the reverse file-request channel (§7.1) can read device storage
+  beyond the support report~~ — **answered live (§7.2)**: no, names are
+  validated (`Nak 129`) and non-report file types are refused (`Nak 130`).
 - Whether the fallback image lives in flash beyond the shipped image end
   (0x38B4980) or in the erased gap region.
 - Whether `Setup.UpdateParadeFw` (WiFi/QCA2066 firmware) shares this flash
   path or targets the WiFi module's own storage.
+- `dropbear` SSH runs on the base (key-only, `FINAL_SSH_KEYS=1`) — with
+  which authorized keys, and on which address/interface it listens.

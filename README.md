@@ -81,9 +81,11 @@ nofio-linux/
 
 ## Hardware Information
 
-- **Base Station VID:PID:** 04b3:4010 (IBM Corp. IMRWirelessVR)
-- **WiFi Chipset:** QCA2066 (Qualcomm Atheros)
-- **Network:** USB Ethernet (CDC-ECM/RNDIS)
+- **SoC:** Xilinx Zynq UltraScale+ MPSoC on a Trenz TE0803 SoM (custom IMRNext carrier), secure boot enforced (AES eFUSE + RSA-4096)
+- **Base VID:PID:** 04b3:1234 ("Nofio Wireless Base", IMRNext; verified live, CDC network class)
+- **OS:** Buildroot Linux 5.10.0-nofio (aarch64, initramfs)
+- **WiFi Chipset:** QCA2066 (Qualcomm Atheros) + 60 GHz Wilocity-family radios (`wil6210.fw`, `wil6436.fw`)
+- **Network:** USB Ethernet (CDC)
 - **IP Range:** 192.168.3.x
 - **VirtualHere Server:** 192.168.3.1:7575
 
@@ -125,13 +127,12 @@ nofio-linux/
 
 
 ### Phase 3: Open Source Firmware
-- [ ] Complete firmware decompression
-- [ ] Disassemble ARM Thumb code (Ghidra/IDA)
-- [ ] Document firmware call graph
-- [ ] QNX6 filesystem analysis (head_BOOT.BIN)
-- [ ] Validate PGP signature / boot verification
-- [ ] Port to open source framework (Zephyr, FreeRTOS)
-- [ ] QCA2066 WiFi driver support
+- [x] Identify the shipped image format ([firmware/boot_image_format.md](firmware/boot_image_format.md)): Xilinx ZynqMP secure boot image (AES eFUSE + RSA-4096); per-device encrypted, so static extraction is ruled out
+- [ ] Dynamic capture of a real firmware update (tcpdump/usbmon)
+- [ ] UART/JTAG inspection of the Trenz TE0803 SoM (documented pinout)
+- [ ] Document the device-side update daemon (`imr_controller`, Buildroot Linux 5.10)
+- [ ] Port to open source framework (Zephyr, FreeRTOS) — requires bypassing or replacing the secure-boot chain on stock hardware
+- [ ] QCA2066 / 60 GHz (Wilocity) WiFi driver support
 
 ### Phase 4: Optimizations and fixes
 - [ ] Fix current nofio firmware bugs
@@ -149,7 +150,8 @@ This project is licensed under the GNU General Public License v3.0 (GPLv3). See 
 
 - [ValveSoftware/openvr](https://github.com/ValveSoftware/openvr) - OpenVR SDK
 - [Sblash/nofio-linux](https://github.com/Sblash/nofio-linux) - Original Linux guide
-- [QNX Documentation](https://www.qnx.com/developers/docs/) - QNX6 OS documentation
+- [Buildroot](https://buildroot.org/) - The device OS build system
+- [Xilinx/zynqmpimage (u-boot)](https://github.com/Xilinx/u-boot-xlnx/blob/master/tools/zynqmpimage.h) - ZynqMP boot image format reference
 
 ## Contact
 

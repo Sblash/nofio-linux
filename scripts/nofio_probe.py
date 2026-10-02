@@ -56,11 +56,13 @@ locally connected).
 """
 
 import argparse
+import io
 import socket
 import struct
 import sys
 import threading
 import time
+import zipfile
 
 BASE_IP = "192.168.3.1"
 BASE_PORT = 34566
@@ -595,6 +597,62 @@ def cmd_raw(args):
         client.close()
 
 
+def cmd_report(args):
+    """Download the device support report through the reverse file channel.
+
+    The client sends SoftwareUpdateMeta requests (type 135) and the device
+    replies with SoftwareUpdateData packets (type 137) carrying the report.
+    Only FileType=5 (SupportReport) with ActualFileName="meta" is served;
+    everything else is refused (Nak 129/130). See
+    firmware/firmware_flashing.md section 7.
+    """
+    def meta_body(file_type, count=0, final=0, name=b""):
+        return (bytes([file_type]) + struct.pack(">HH", count, final)
+                + bytes([len(name)]) + name)
+
+    def tagged_reply(client, tag, wait=10.0):
+        deadline = time.time() + wait
+        while time.time() < deadline:
+            rtag, rtype, rbody = client.recv_message()
+            if rtag == tag:
+                return rtype, rbody
+        raise TimeoutError("no reply with tag 0x%04x" % tag)
+
+    client = NofioClient(args.host, args.port, args.identity, args.device,
+                         args.timeout, via_base=args.via_base)
+    client.connect_tcp()
+    try:
+        client.establish()
+        if not args.no_heartbeat:
+            client.start_heartbeat()
+        tag = client.send_message(135, meta_body(5, 0, 0, b"meta"))
+        rtype, rbody = tagged_reply(client, tag)
+        if rtype == 1:  # Nak
+            raise RuntimeError("support report refused: %s" % rbody.hex())
+        if rtype != 135:
+            raise RuntimeError("unexpected reply %s" % msg_name(rtype))
+        count, final = struct.unpack(">HH", rbody[1:5])
+        total = count * 65523 + final
+        print("report: %d chunk(s) + final %d B = %d bytes" % (count, final, total))
+        chunks = {}
+        for i in range(count + 1):
+            tag = client.send_message(135, meta_body(5, i, 0))
+            rtype, rbody = tagged_reply(client, tag)
+            if rtype != 137:
+                raise RuntimeError("chunk %d refused (%s)" % (i, msg_name(rtype)))
+            idx = struct.unpack(">H", rbody[:2])[0]
+            chunks[idx] = rbody[2:]
+            print("chunk %d: %d bytes" % (idx, len(chunks[idx])))
+        data = b"".join(chunks[i] for i in sorted(chunks))[:total]
+        open(args.output, "wb").write(data)
+        print("saved %s (%d bytes)" % (args.output, len(data)))
+        if data[:2] == b"PK":
+            print("ZIP contents: %s" % ", ".join(zipfile.ZipFile(io.BytesIO(data)).namelist()))
+    finally:
+        client.stop_heartbeat()
+        client.close()
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Nofio TCP control protocol probe (reverse-engineered, no drivers)")
@@ -645,6 +703,11 @@ def main():
                        help="seconds to listen for replies")
     p_raw.add_argument("--no-reply", action="store_true")
 
+    p_report = sub.add_parser("report", help="download the support report (ZIP)")
+    common(p_report)
+    p_report.add_argument("output", nargs="?", default="support-report.zip",
+                          help="output file (default: %(default)s)")
+
     args = parser.parse_args()
     if args.command is None:
         args.command = "status"
@@ -669,7 +732,7 @@ def main():
 
     try:
         {"status": cmd_status, "state": cmd_state, "battery": cmd_battery,
-     "monitor": cmd_monitor, "raw": cmd_raw}[args.command](args)
+     "monitor": cmd_monitor, "raw": cmd_raw, "report": cmd_report}[args.command](args)
     except (ConnectionRefusedError, ConnectionError) as exc:
         print("error: %s (is the device reachable on %s?)" % (exc, args.host), file=sys.stderr)
         return 1

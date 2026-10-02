@@ -90,8 +90,9 @@ BootROM (verifies BH, decrypts FSBL with eFUSE AES key, verifies RSA)
       → ARM Trusted Firmware bl31 (EL3, TZ-secure, 0xFFFEA000)
         → U-Boot (EL2, DDR 0x08000000)
           → OS image "linux.ub" (42 MB, DDR 0x10000000)
-              (QNX IFS with the nofio applications + update daemon;
-               despite the bootgen partition name, the OS is QNX)
+              Buildroot Linux 5.10.0-nofio initramfs with the nofio
+              applications + update daemon (confirmed live via the
+              support report; the partition name is literal)
 ```
 
 ## Base vs head differences
@@ -125,9 +126,11 @@ a different pair, embedded in the encrypted OS image.
 
 ## Implications
 
-1. **Static extraction of the update daemon / QNX filesystem is impossible**
-   without the device's eFUSE AES key. The earlier plan to extract the QNX6
-   filesystem from `head_BOOT.BIN` does not apply to these images.
+1. **Static extraction of the update daemon / Linux rootfs is impossible**
+   without the device's eFUSE AES key. The earlier plan to extract a QNX6
+   filesystem from `head_BOOT.BIN` does not apply: the OS is Buildroot Linux
+   (confirmed live via the support report) and the "QNX6 superblock" was a
+   binwalk false positive on encrypted data.
 2. **Custom / open-source firmware on stock hardware is blocked by hardware
    secure boot**: the Boot ROM will not load an FSBL that is not encrypted
    with the eFUSE key and signed by the vendor RSA key. The eFUSE key and the
