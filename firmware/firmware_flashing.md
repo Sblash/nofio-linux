@@ -401,9 +401,9 @@ separate key pair whose public half lives inside the encrypted OS image.
 The hypothesis stands: the device may refuse an unsigned/modified package
 (`IncorrectSoftwareUpdateFile`), and since the utility never checks `.SIG`
 itself, only a live test with a tampered manifest answers whether
-enforcement actually happens. **If verification is enforced, custom firmware
-packages require bypassing it in the running OS — and the boot chain itself
-(eFUSE AES + RSA) blocks replacing the OS with an unsigned one.**
+enforcement actually happens. **If verification is enforced, unsigned custom
+firmware packages are rejected by the device, and the boot chain itself
+(eFUSE AES + RSA) prevents booting a modified OS on stock hardware.**
 
 ### 9.4 Dual image / fallback and recovery mode
 

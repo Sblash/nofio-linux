@@ -468,7 +468,7 @@ Offset  Range       Hex Values                     Description
 **Implications:**
 - Firmware may be **digitally signed**
 - There may be **signature verification** at boot
-- May need to **bypass verification** for custom updates
+- Unsigned custom firmware would be **rejected** if verification is enforced
 
 ---
 

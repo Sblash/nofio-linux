@@ -128,7 +128,7 @@ Same as base_BOOT.BIN (identical first 0x48 bytes).
 **Implications:**
 - Firmware may be digitally signed
 - Signature verification may occur at boot
-- Custom firmware updates may need to bypass verification
+- Unsigned custom firmware would be rejected if signature verification is enforced
 
 ### ARM Thumb Functions
 
@@ -192,7 +192,7 @@ Same as base_BOOT.BIN (identical first 0x48 bytes).
 4. **PGP key analysis**
    - Extract the PGP RSA key
    - Attempt signature verification
-   - Research bypass methods
+   - Document whether signature verification is enforced at boot
 
 ---
 

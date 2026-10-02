@@ -131,7 +131,7 @@ nofio-linux/
 - [ ] Dynamic capture of a real firmware update (tcpdump/usbmon)
 - [ ] UART/JTAG inspection of the Trenz TE0803 SoM (documented pinout)
 - [ ] Document the device-side update daemon (`imr_controller`, Buildroot Linux 5.10)
-- [ ] Port to open source framework (Zephyr, FreeRTOS) — requires bypassing or replacing the secure-boot chain on stock hardware
+- [ ] Port to open source framework (Zephyr, FreeRTOS) — not possible on stock hardware: secure boot (eFUSE AES + vendor RSA) only launches vendor-signed images, so open firmware requires vendor cooperation or different hardware
 - [ ] QCA2066 / 60 GHz (Wilocity) WiFi driver support
 
 ### Phase 4: Optimizations and fixes
