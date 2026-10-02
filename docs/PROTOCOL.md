@@ -211,6 +211,15 @@ between the roles is the interesting part:
 | `usb0_addr` | `192.168.3.1/24` | `192.168.4.1/24` | PC-facing gadget networks |
 | `usb1_dir` | `peripheral` | `host` | the head's second USB port is a **USB host** — presumably where the Valve Index connects |
 
+Note: requesting a support report from the **head** (via base routing,
+paired link) currently fails device-side with `SoftwareUpdateComplete`
+return code 0 and message `failed to open /tmp/support-report.zip`
+(reproduced twice) — the head cannot generate the report zip (its `/tmp`
+appears too small or in a degraded state). The error message itself is
+informative: the device-side report generator writes to
+`/tmp/support-report.zip` before serving it, confirming the
+`/bin/support-report` script flow seen in the base process list.
+
 Keys that exist **only on the base** (the encoder side): all `rate_control_*`
 (PID bitrate adaptation), `packet_size = 7828`, `max_packet_blocks = 1280`,
 all `fov_*` foveation parameters, `foveation_en`.
