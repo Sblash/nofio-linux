@@ -43,7 +43,7 @@ Create a **complete open source solution** for Nofio hardware (wireless adapter 
 - Protocol hypothesized (based on OpenVR + VirtualHere)
 - Dynamic reverse engineering (requires hardware/Windows) - Pending
 - Open source implementation (to be started) - Pending
-- **Phase 1 started: PDB analysis in progress (scripts in ./scripts/)**
+- **Phase 1: PDB analysis complete — driver_nofio is a settings companion device, not in the streaming path (see [driver/PDB_ANALYSIS.md](../driver/PDB_ANALYSIS.md))**
 
 ---
 
@@ -194,11 +194,12 @@ $AE275D11-DADF-4010-BF10-CCA5C83DCBB0
 
 #### Properties
 
-- **Size:** 913 KB
+- **Size:** 17 KB (DLL) + 913 KB (PDB with full debug symbols)
 - **Language:** C++
 - **Type:** DLL (Dynamic Link Library)
 - **Entry Point:** HmdDriverFactory (exported)
 - **Compilation:** Visual Studio 2022 Community (VC++ 14.36.32532)
+- **Source Project:** `steamvr_integration/Driver` (build path recovered from PDB)
 
 #### Export Table
 
@@ -210,17 +211,32 @@ Export: HmdDriverFactory @ RVA 0x16C0
 
 #### Implemented SteamVR Interfaces
 
+Classes found in the PDB implement only two OpenVR interfaces:
+
 ```
-ITrackedDeviceServerDriver_005
-IVRServerDriverHost_006
-IServerTrackedDeviceProvider_004
-IVRWatchdogProvider_001
-IVRCompositorPluginProvider_001
-IVRProperties_001
-IVRDriverLog_001
-IVRDriverManager_001
-IVRSettings_003
+IServerTrackedDeviceProvider_004  -> class device_provider
+ITrackedDeviceServerDriver_005    -> class device_settings
 ```
+
+The remaining interface strings in the DLL (`IVRServerDriverHost_006`,
+`IVRWatchdogProvider_001`, `IVRCompositorPluginProvider_001`,
+`IVRProperties_001`, `IVRDriverLog_001`, `IVRDriverManager_001`,
+`IVRSettings_003`, `IVRDisplayComponent_002`, `IVRDriverDirectModeComponent_008`,
+`IVRCameraComponent_003`, `IVRVirtualDisplay_002`) are the standard names
+queried through the driver context / `GetComponent`; no display, camera, or
+direct-mode component is implemented.
+
+#### Class Structure (from PDB)
+
+| Class | Base | Methods |
+|-------|------|---------|
+| `device_provider` | `IServerTrackedDeviceProvider` | `Init`, `Cleanup`, `RunFrame`, `GetInterfaceVersions`, `EnterStandby`, `LeaveStandby`, `ShouldBlockStandbyMode` |
+| `device_settings` | `ITrackedDeviceServerDriver` | `Activate`, `Deactivate`, `GetPose`, `RunFrame` |
+| `device_status` | - | Status bookkeeping (no additional device) |
+| `IDevice` | `ITrackedDeviceServerDriver` | `GetComponent`, `DebugRequest`, `EnterStandby` |
+
+Source files: `driver_factory.cpp`, `device_provider.cpp/h`,
+`device_settings.cpp/h`, `device_status.cpp/h`, `idevice.h`.
 
 #### Log Messages
 
@@ -229,6 +245,41 @@ IVRSettings_003
 "Driver load complete!"
 "Settings device activated! Adding properties..."
 ```
+
+#### Imports Analysis
+
+The DLL imports only CRT and `kernel32` basics (`malloc`, `memcpy`, `strcmp`,
+`QueryPerformanceCounter`, ...). **No `winusb`, `setupapi`, or `ws2_32`**:
+the driver performs zero USB, network, or display I/O.
+
+#### Role in the Stack
+
+The driver registers a single stationary virtual device
+(`"nofio_settings"`), made always present by `alwaysActivate: true` in the
+manifest. It is a **settings/status companion** for `nofioUtility.exe`
+(properties exchanged via `IVRSettings_003` / `IVRProperties_001`), not part
+of the streaming path:
+
+```
+SteamVR -> native Valve Index driver (lighthouse) -> VirtualHere Client
+        -> 192.168.3.1:7575 (VirtualHere Server) -> USB -> Valve Index
+```
+
+The headset chain works without the driver; the driver cannot work without
+SteamVR.
+
+#### Implications for the Linux Port
+
+- The binary is Windows-only (PE32+) and cannot be loaded on Linux; keep it
+  as an OpenVR API reference only.
+- Its function (settings companion) is optional: a VirtualHere client on
+  Linux plus SteamVR's native Index driver cover the streaming path without
+  any custom driver.
+- The direct-USB driver planned as the "Target" architecture is new work;
+  this artifact is not a starting point for it beyond OpenVR API usage.
+
+See [driver/PDB_ANALYSIS.md](../driver/PDB_ANALYSIS.md) for the full
+reconstructed behavior.
 
 ### 3. VirtualHere: vhui64.exe
 
@@ -252,8 +303,8 @@ MainFrameY=436
 SSLReverseLookup=1
 
 [Transport]
-EasyFindId=<redacted>
-EasyFindPin=<redacted>
+EasyFindId=<device-specific, redacted>
+EasyFindPin=<device-specific, redacted>
 
 [Settings]
 ManualHubs=192.168.3.1,192.168.3.1,192.168.3.1,192.168.3.1:7575
@@ -504,17 +555,17 @@ Offset  Range       Hex Values                     Description
 
 2. **VirtualHere Startup**
    - VirtualHere client connects to 192.168.3.1:7575
-   - Authentication via EasyFindId/Pin (<redacted> / <redacted>)
+   - Authentication via EasyFindId/Pin (device-specific pairing credentials, redacted — see the vhui.ini section)
    - Establishes USB-over-IP tunnel
 
 3. **SteamVR + Driver Startup**
    - SteamVR loads driver_nofio.dll via HmdDriverFactory
-   - Driver registers device with SteamVR
+   - Driver registers the `nofio_settings` companion device with SteamVR
    - VirtualHere allows PC to "see" headset as local USB device
 
 4. **Usage**
-   - SteamVR communicates with headset via driver
-   - Driver does NOT directly access USB (all handled by VirtualHere)
+   - SteamVR talks to the headset via its native Valve Index (lighthouse) driver, over the VirtualHere USB tunnel
+   - Driver does NOT directly access USB (no USB/network I/O at all; it only exposes settings/status properties)
    - .NET utility manages: configuration, firmware updates, notifications
 
 ---
@@ -532,8 +583,8 @@ Offset  Range       Hex Values                     Description
 
 - **Server IP:** 192.168.3.1
 - **Server Port:** 7575
-- **EasyFindId:** <redacted>
-- **EasyFindPin:** <redacted>
+- **EasyFindId:** (device-specific pairing credential, redacted)
+- **EasyFindPin:** (device-specific pairing credential, redacted)
 - **Protocol:** Proprietary USB/IP
 
 #### SteamVR
@@ -559,12 +610,12 @@ Offset  Range       Hex Values                     Description
 └─────────────────────────┬───────────────────────────────────┘
                           │
 ┌─────────────────────────▼───────────────────────────────────┐
-│                    Driver Layer (Kernel Space)                │
+│             Plugin Layer (User Space, no kernel driver)      │
 ├─────────────────────────────────────────────────────────────┤
 │  driver_nofio.dll (Windows)  ┊  libusb (Linux)                │
-│  - ITrackedDeviceServerDriver  ┊  - Device detection          │
-│  - IServerTrackedDeviceProvider ┊  - USB access                │
-│  - VirtualHere integration      ┊                                   │
+│  - Settings companion device   ┊  - Device detection          │
+│    ("nofio_settings", no I/O)  ┊  - USB access                │
+│  - Exposes properties only     ┊                                   │
 └─────────────────────────┬───────────────────────────────────┘
                           │
 ┌─────────────────────────▼───────────────────────────────────┐
@@ -592,7 +643,7 @@ Offset  Range       Hex Values                     Description
 
 ### Software
 
-1. **SteamVR Driver:** Implements standard SteamVR interfaces
+1. **SteamVR Driver:** Settings/status companion device (`nofio_settings`), not in the streaming path (no USB/network I/O)
 2. **Entry Point:** HmdDriverFactory (exported by driver_nofio.dll)
 3. **.NET Utility:** C# .NET 7 application with GUI
 4. **VirtualHere:** Third-party software for USB-over-IP (192.168.3.1:7575)
@@ -805,8 +856,8 @@ IServerTrackedDeviceProvider_004
 ```
 VID: 0x04b3 (found multiple times)
 PID: 0x4010 (inferred from context)
-EasyFindId: <redacted>
-EasyFindPin: <redacted>
+EasyFindId: (device-specific pairing credential, redacted)
+EasyFindPin: (device-specific pairing credential, redacted)
 IP: 192.168.3.1
 Port: 7575
 ```

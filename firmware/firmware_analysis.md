@@ -52,6 +52,7 @@ Both firmware files have:
 ### Extracted Files
 
 - **extracted/base_embedded.gif** - GIF image extracted from offset 0x37DF803
+  (not distributed in this repository; vendor asset)
   - Size: ~100KB (partial extraction)
   - Dimensions: 27699 x 61353 pixels
   - Status: Likely corrupted or compressed

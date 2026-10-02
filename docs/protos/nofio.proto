@@ -1,0 +1,203 @@
+// Reconstructed .proto schema for the Nofio control protocol protobuf payloads.
+//
+// Source: ProtobufTypes.dll (Imr.Proto namespace), decompiled with
+// ilspycmd after de4dot cleanup. Field numbers, names and types are taken
+// directly from the generated C# code; enum values from the OriginalName
+// attributes. Referenced by docs/PROTOCOL.md ("Protobuf schema").
+//
+// These messages travel wrapped in the Protobuf(140) message:
+//   [u8 packet count][u16 content type][protobuf bytes]
+// where the content type identifies the message (129=BaseStatus,
+// 130=HeadStatus, 144=Setup, 145=Configuration, 158=Pairing).
+
+syntax = "proto3";
+package imr.proto;
+
+// ---------------------------------------------------------------- BaseStatus
+// Sent by the base (and nested inside HeadStatus for the head's own
+// base-side view). Field 30 (epoch-like counter, 1596137xxx) was observed
+// live but has no name in the decompiled constants - it may be an
+// obfuscated/renamed extra field; treat as unknown.
+
+message BaseStatus {
+  message Radio {
+    string RF = 1;    // radio identifier
+    int32 Temp = 2;   // radio temperature
+  }
+
+  bool WirelessLink = 1;                 // link to the head is up
+  bool BridgeLink = 2;                   // video bridge link
+  bool ControllerInterface = 3;
+  bool ControllerDevice = 4;
+  uint32 CpuTemp = 5;                    // °C
+  uint32 FpgaTemp = 6;                   // °C
+  uint32 BasebandTemp = 7;               // °C
+  uint32 RadioTemp = 8;                  // °C
+  uint32 WirelessTxMcs = 9;              // WiFi MCS index
+  uint32 WirelessRxMcs = 10;
+  uint32 WirelessChannel = 11;           // e.g. 13
+  uint32 SignalStrength = 12;
+  repeated uint32 CpuLoad = 13;          // per-core load
+  int32 BridgeTxSpeed = 14;
+  int32 BridgeRxSpeed = 15;
+  int32 BridgeRxMaxSpeed = 16;           // e.g. 206000
+  uint32 ControllerState = 17;
+  WirelessStateFlags WirelessState = 18; // bit flags
+  repeated uint32 Sector = 19;
+  uint32 VideoRxSpeed = 20;
+  uint32 PeakVideoRXSpeed = 21;
+  uint32 PeakUncompressedVideoTXSpeed = 22;
+  int32 RSSI = 23;                       // e.g. 95
+  uint32 SQI = 24;
+  repeated Radio Radios = 25;
+  uint64 PeakUncompressedVideoTXSpeed64 = 26; // e.g. 2058000000
+  bool Isax = 27;                        // 802.11ax mode
+  uint32 ChannelFreq = 28;               // MHz, e.g. 6015
+
+  // bit flags (observed values from the live base: 260 = 0x104)
+  enum WirelessStateFlags {
+    Unknown = 0;
+    PairingNone = 1;
+    PairingStarted = 2;
+    PairingSuccess = 4;
+    PairingFailure = 8;
+    ConnectionLost = 16;
+    WifiError = 32;      // "WifwError" in the original (sic)
+    WipciError = 64;
+    PairingUnpaired = 128;
+    ConnectionOk = 256;
+    WitoolError = 512;
+  }
+}
+
+// ---------------------------------------------------------------- HeadStatus
+// Sent by the head (query it through the base with RequestStatus).
+
+message HeadStatus {
+  enum PowerSource {
+    Unknown = 0;
+    InternalBattery = 1;
+    ExternalBattery = 2;
+    Charger = 3;
+    LowVoltageBattery = 4;
+  }
+
+  BaseStatus BaseStatus = 1;             // head's own view of the link
+  PowerSource PowerSource = 2;
+  uint32 VoltageIn = 3;
+  int32 ChargeCurrent = 4;
+  uint32 BatteryVoltage = 5;
+  uint32 VideoTxSpeed = 6;
+  bool VideoBufferReady = 7;
+  uint32 VideoBufferGeneratedPackets = 8;
+  uint32 PacketErrorRate = 9;
+  // Battery packs powering the head unit over USB-C (the head runs on an
+  // EXTERNAL powerbank, not an internal cell). "Left" tracks the pack that
+  // is currently powering the unit and discharges in real time; "Right" is
+  // a second input (1% observed when only one pack is connected).
+  // These are the values the original utility displays on its VR overlay.
+  int32 LeftBatteryCharge = 10;           // head powerpack charge %
+  int32 RightBatteryCharge = 11;          // second powerpack charge %, -1 = not connected
+}
+
+// -------------------------------------------------------------------- Pairing
+message Pairing {
+  enum PairingType {
+    READ = 0;
+    SEND = 1;
+    SET = 2;
+    DONE = 3;
+    FAIL = 4;
+  }
+  enum PairingState {
+    Unknown = 0;
+    PairingNone = 1;
+    PairingStarted = 2;
+    PairingSuccess = 4;
+    PairingFailure = 8;
+    PairingUnpaired = 16;
+  }
+
+  PairingType PairingType = 1;
+  bytes Ssid = 2;
+  bytes Psk = 3;
+  string BaseErrorMsg = 4;
+  string HeadErrorMsg = 5;
+  bool BeginPairing = 6;
+  bool BaseCompleted = 7;
+  bool HeadCompleted = 8;
+  PairingState PairingState = 9;
+}
+
+// ---------------------------------------------------------------------- Setup
+// The base's configuration/command message (MessageType 144).
+message Setup {
+  enum FactoryResetOptions {
+    Reset_None = 0;
+    Reset_Force = 1;
+    Reset_All = 2;
+    Reset_Data = 4;
+    Reset_Check = 8;
+  }
+  enum RemoveFile {
+    Unknown = 0;
+    FPGA = 1;
+    BOARD = 2;
+    FIRMWARE = 3;
+    FOVEATIONCONF = 4;
+    IMR_CONTROLLER = 5;
+  }
+  enum AYMode {
+    DMG = 0;
+    CB2 = 2;
+  }
+  enum Diversity {
+    Div_Default = 0;
+    Div_Single = 1;
+    Div_Double = 2;
+  }
+
+  string WirelessCountry = 1;            // e.g. "US"
+  uint32 WirelessChannel = 2;
+  uint32 VideoQuality = 3;
+  bool Pair = 4;
+  FactoryResetOptions FactoryReset = 5;
+  bool Reboot = 6;
+  bool FlashFailed = 8;
+  repeated string BoardFile = 9;
+  repeated string FirmwareFile = 10;
+  uint32 LogLevel = 13;
+  bool Query = 14;                        // request a reply with current values
+  bool UpdateUserConf = 15;
+  bool UpdateSystemConf = 16;
+  repeated string FpgaFile = 17;
+  RemoveFile Remove = 18;
+  bool FoveationConf = 19;
+  bool RestartWireless = 20;
+  bool IMRController = 21;
+  uint32 IMRControllerStartCount = 22;
+  string EdmgChannel = 23;               // DMG channel
+  repeated string EdmgChannels = 24;
+  bool RestartController = 25;
+  bool WirelessAP = 26;
+  AYMode AyMode = 27;
+  Diversity Diversity = 28;
+  bool UpdateParadeFw = 29;
+  bool IsAX = 30;                         // 802.11ax
+  string AxChannel = 31;
+  repeated string AxChannels = 32;
+}
+
+// --------------------------------------------------------------- Configuration
+message Configuration {
+  repeated ConfigurationItem DefaultConf = 1;
+  repeated ConfigurationItem FactoryConf = 2;
+  repeated ConfigurationItem UserConf = 3;
+  repeated ConfigurationItem SystemConf = 4;
+  repeated ConfigurationItem ActualValues = 5;
+}
+
+message ConfigurationItem {
+  string Key = 1;
+  string Value = 2;
+}

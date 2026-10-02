@@ -54,7 +54,10 @@ struct UsbDeviceDescriptor {
 
 #### VirtualHere Configuration (vhui.ini)
 
-Extracted from the `vhui.ini` file bundled with the Nofio utility:
+Extracted from the `vhui.ini` file bundled with the Nofio utility (the
+EasyFindId/Pin values are device-specific pairing credentials and have been
+redacted; get them from the `vhui.ini` shipped with the official Nofio
+utility, in the `Resources` folder of its installation directory):
 
 ```ini
 [General]
@@ -66,8 +69,8 @@ AutoFind=1
 SSLReverseLookup=1
 
 [Transport]
-EasyFindId=<redacted>
-EasyFindPin=<redacted>
+EasyFindId=<device-specific, redacted>
+EasyFindPin=<device-specific, redacted>
 
 [Settings]
 ManualHubs=192.168.3.1,192.168.3.1,192.168.3.1,192.168.3.1:7575
@@ -88,6 +91,336 @@ VirtualHere uses a proprietary protocol for USB-over-IP. The protocol is not pub
    - Device control and data transfer
 
 > The detailed VirtualHere wire protocol is proprietary and has not been reverse engineered. No packet captures have been performed. Any further detail would require Wireshark/tcpdump analysis during active sessions.
+
+## Direct TCP Control Protocol (nofioUtility ↔ Base/Head) **[Verified - decompiled source]**
+
+> **Source:** static reverse engineering of the decompiled `nofioUtility.exe`
+> (C#, `UserInterface.Business.Services.NofioApi.*`). All frame formats below are
+> taken directly from the decompiled encoder/decoder code, not from packet
+> captures. Dynamic confirmation against real hardware is pending; a ready-made
+> client is provided in `scripts/nofio_probe.py`.
+
+The utility app talks to the stations on a dedicated TCP control channel,
+independent of VirtualHere (which only tunnels the headset's USB devices).
+
+### Endpoints
+
+| Station | Address            | Port  | Client identity (source byte) |
+|---------|--------------------|-------|-------------------------------|
+| Base    | `192.168.3.1`      | 34566 | `PC` (0)                      |
+| Head    | `192.168.4.1`      | 34568 | `PC2` (3)                     |
+
+Device bytes: `PC = 0`, `Base = 1`, `Head = 2`, `PC2 = 3`, `Max = 4`.
+
+### Packet framing (big-endian)
+
+```
+offset  size  field
+0       1     source device
+1       1     destination device
+2       4     sequence (uint, increments per packet; receiver drops the
+              connection with PacketSequenceError on gaps)
+6       1     options: bit0 = start-of-message, bit1 = end-of-message
+7       2     payload length (max 65535)
+9       ...   payload chunk
+```
+
+Messages larger than 65535 bytes are chunked across packets (start flag on the
+first, end flag on the last, sequence increments per packet).
+
+### Message format (reassembled payload)
+
+```
+offset  size  field
+0       2     tag (ushort): (device << 14) | transaction id (14 bit)
+2       2     message type (ushort)
+4       ...   message body
+```
+
+The tag identifies the request/reply pair: replies echo the tag of the request.
+Tag `0` is broadcast (used for heartbeats). The connect handshake uses
+transaction id 1; regular requests take per-destination transaction ids.
+
+### Handshake (dynamically verified against real hardware)
+
+1. TCP connect
+2. Client sends `Connect` (type 2) with body `uint32 protocol version` (the utility
+   uses **80**) and tag `(destination << 14) | 1`
+3. The station replies with its **own `Connect`** (same tag, body = its protocol
+   version — the base reports 80). The client must answer `Ack` (type 0, empty
+   body, echoing the station's tag). **The station does not Ack the client's
+   Connect** — the connection is established once the client has acked the
+   station's Connect
+4. Keep-alive: client sends `Heartbeat` (type 4, body `uint32 0`, tag 0) every
+   1000 ms. The station echoes each heartbeat with body = **3000** (0x0BB8,
+   presumably its keep-alive timeout in ms); an idle connection is dropped after
+   roughly 2-3 seconds without traffic
+5. A `Nak` (type 1, body `uint32` error code) rejects the connect (e.g.
+   `OldVersion` on protocol mismatch). The utility treats station versions
+   below 49 as remote-old
+
+### Command messages
+
+| Type | Name                 | Body (big-endian)                            | Reply |
+|------|----------------------|----------------------------------------------|-------|
+| 0    | Ack                  | empty                                        | — |
+| 1    | Nak                  | `uint32` error code (see below)              | — |
+| 2    | Connect              | `uint32` protocol version                    | Ack |
+| 3    | Disconnect           | empty                                        | — |
+| 4    | Heartbeat            | `uint32` next (client sends 0)              | heartbeat echo, body 3000 |
+| 128  | RequestStatus        | `uint16` expected reply message type        | message of the requested type, same tag (verified live: requesting type 134 returns the firmware version) |
+| 134  | SoftwareVersion      | `uint16` length + version string             | — |
+| 140  | Protobuf             | `uint8` packet count + `uint16` content type + protobuf bytes | — |
+
+`RequestStatus` is the general query mechanism: e.g. requesting type 134
+(SoftwareVersion) makes the station answer with a `SoftwareVersion` message
+whose body is `[uint16 length][version string]` (multi-line, the utility splits
+it on `\n` into a key=value dictionary). The utility also requests
+`SoftwareVersion` on connect to compute `IsFirmwareUpToDate` and
+`IsOnFallbackFirmware`.
+
+Message types carried inside `Protobuf` (type 140) include `BaseStatus` (129),
+`HeadStatus` (130), `Setup` (144), `Configuration` (145) and `Pairing` (158,
+requires protocol ≥ 76). The protobuf field schemas live in the separate
+`ProtobufTypes` assembly and are not yet documented.
+
+### Write operations and risk levels
+
+The protocol is not read-only. Sending arbitrary messages with `raw` can
+change device state, and a few paths are genuinely dangerous:
+
+| Level | Operations | Effect / recovery |
+|---|---|---|
+| Safe | `RequestStatus`, `SoftwareVersion`, heartbeats, malformed bodies | rejected with `Nak` or disconnect, no state change |
+| Reversible | `Setup.WirelessCountry/Channel`, `Setup.Pair`, `Setup.Reboot`, `RestartWireless/Controller` | config/behavior changes; worst case the wireless link breaks and needs re-setting over USB or factory reset |
+| Destructive | `Setup.FactoryReset` (Force/All/Data), `Setup.Remove` (deletes FIRMWARE / FPGA / BOARD / FOVEATIONCONF / IMR_CONTROLLER files from device storage), `Pairing` Ssid/Psk overwrite | wipes configuration or removes firmware files from storage |
+| Brick risk | `SoftwareUpdateMeta` -> `SoftwareUpdateData` -> `SoftwareUpdateComplete` (TCP firmware flashing), `Setup.UpdateParadeFw`, interrupted/corrupted transfers | wrong or interrupted flash can leave a unit unbootable |
+
+Mitigations (verified in the decompiled utility and on hardware): the units
+keep a **fallback firmware image** (the `is_fallback` line in SoftwareVersion,
+`IsBaseOnFallback`/`IsHeadOnFallback` in the utility, its "Recover Firmware"
+flow and `FirmwareValidity` checks); the device validates update transfers
+(`Nak` IncorrectSoftwareUpdatePacket/File, the app checks SHA1SUMS manifests)
+and rejects nonsense with `Nak`. A fallback image however does NOT protect
+against `Setup.Remove` on firmware files, `FactoryReset(Force/All)`, or a
+flash interrupted at the wrong moment. Real damage requires deliberately
+sending a well-formed destructive sequence — a typo'd query just gets `Nak`'d
+and sequence errors only drop the connection.
+
+### Nak error codes (`uint32`)
+
+`0` None, `1` OldVersion, `2` NoPath, `3` AlreadyConnected, `64` InternalStart,
+`128` InvalidStatusRequest, `129` IncorrectSoftwareUpdatePacket,
+`130` IncorrectSoftwareUpdateFile, `131` SyncRebootFailed, `132` WirelessChanged,
+`133` InvalidRequest, `134` IncorrectResponse, `135` ExceptionCaught, `136` Busy,
+`137` Timeout, `138` VideoNotConnected, `139` VdmaNotIncluded, `140` SyncShutdownFailed.
+
+### Other observed message types (device → PC, utility listens)
+
+`BaseStatus` (129), `HeadStatus` (130), `HMDSuspended` (131), `Statistics` (136),
+`VideoStatus` (153), `AudioInfo` (154), `PeerInfo` (149), `EDID` (148) and the
+video/FPGA events (64–67, 139, 141–143, 152, 155–157). Firmware updates use
+`SoftwareUpdateMeta` (135) → `SoftwareUpdateData` (137, 65523-byte chunks) →
+`SoftwareUpdateComplete` (138).
+
+### Base → Head routing (dynamically verified)
+
+The base acts as a router for the control protocol: packets sent on the base
+TCP connection with `Destination = Head (2)` are forwarded to the head adapter
+over the wireless link, and the head's replies come back on the same TCP
+connection (tag device-bits = Head). The full Connect exchange works with the
+head through the base — no direct network path to 192.168.4.0/24 is needed.
+
+Session rules (all verified live, base firmware v2.5.0):
+
+- The routing is **transparent**: a head-only session needs NO base handshake —
+  connect to the base endpoint and address packets to the head directly
+- **One TCP connection talks to one device**: mixing base-directed requests
+  into a head-routed session makes the base send `Disconnect` and drop the
+  connection (this is why the original utility uses two separate sockets)
+- `RequestStatus{PeerInfo}` on the base returns a protobuf with the wireless
+  peer: field 1 = 2 (`Device.Head`), field 2 = 80 (its protocol version)
+- The base answers `BaseStatus` and `SoftwareVersion` itself, but refuses
+  head-only queries with `Nak(InvalidStatusRequest)`: `HeadStatus`,
+  `Statistics`; `VideoStatus` is refused with `Nak(VideoNotConnected)` when no
+  video source is connected — query the head for those (via the base)
+- 192.168.4.0/24 is NOT routed by the base at the IP layer (it answers
+  `ICMP Destination Net Unreachable`); the head's direct address only works
+  when the head is locally connected (see `IsHeadLocal` in the utility)
+- Packet sequence counters are tracked **per source device**: the base's and
+  the head's packets arrive interleaved on the same TCP connection, each with
+  its own counter
+
+### Byte-level walkthrough (real captured traffic)
+
+Everything is big-endian. One full status query against the base:
+
+```
+PC -> Base   Connect (handshake, step 1)
+  packet : 00 01 00000000 03 0008
+           │  │  │       │  └─ payload length: 8
+           │  │  │       └─ options: 03 = start+end (single packet)
+           │  │  └─ sequence: 0 (increments per packet)
+           │  └─ destination: 01 = Base
+           └─ source: 00 = PC
+  message: 4001 0002 00000050
+           │    │    └─ body: protocol version 80
+           │    └─ message type: 0x0002 = Connect
+           └─ tag: (Base << 14) | 1 = 0x4001
+
+Base -> PC   Connect (the station announces ITS version)
+  packet : 01 00 <seq> 03 0008
+  message: 4001 0002 00000050          (same tag, protocol version 80)
+
+PC -> Base   Ack (completes the handshake)
+  packet : 00 01 00000001 03 0004
+  message: 4001 0000                    (type 0 = Ack, empty body, echo tag)
+
+PC -> Base   RequestStatus (the actual query)
+  packet : 00 01 00000002 03 0006
+  message: 4002 0080 0086              (type 128, body: expect 0x0086 = 134)
+
+Base -> PC   SoftwareVersion reply (echoes the tag 0x4002)
+  message: 4002 0086 <u16 len> <version string, multi-line>
+
+PC -> Base   Heartbeat (every 1000 ms, tag 0 = broadcast)
+  message: 0000 0004 00000000
+Base -> PC   heartbeat echo
+  message: 0000 0004 00000bb8          (3000: the base's keep-alive timeout
+                                         in ms — idle sessions are dropped
+                                         after roughly 2-3 seconds)
+```
+
+Querying the head uses the same exchange on a fresh connection, with
+`destination = 02` and tags `(2 << 14) | n` (0x8001, 0x8002, ...).
+
+### Protobuf schema (reconstructed, [Verified])
+
+The `ProtobufTypes.dll` assembly (namespace `Imr.Proto`) was deobfuscated with
+de4dot and decompiled with ilspycmd. The complete reconstructed schema is in
+**`docs/protos/nofio.proto`**. Summary of the messages carried inside
+`Protobuf` (140):
+
+- **BaseStatus** (content type 129): link booleans (WirelessLink, BridgeLink),
+  temperatures (CpuTemp, FpgaTemp, BasebandTemp, RadioTemp), WiFi stats
+  (WirelessTx/RxMcs, WirelessChannel, ChannelFreq, RSSI, SignalStrength),
+  per-core CpuLoad (packed repeated), bridge/video speeds,
+  PeakUncompressedVideoTXSpeed64, Isax, WirelessState (bit flags:
+  PairingStarted/Success/Failure, ConnectionLost/Ok, WifiError, ...),
+  nested Radio messages (RF name + Temp)
+- **HeadStatus** (130): nested BaseStatus (the head's own view),
+  PowerSource (Unknown/InternalBattery/ExternalBattery/Charger/LowVoltage),
+  VoltageIn, ChargeCurrent, BatteryVoltage, VideoTxSpeed,
+  VideoBufferReady/GeneratedPackets, PacketErrorRate,
+  LeftBatteryCharge/RightBatteryCharge (battery packs powering the head over
+  USB-C — the head runs on an external powerbank; -1 = not connected)
+- **Setup** (144): the base's configuration/command message — WirelessCountry,
+  WirelessChannel, VideoQuality, Pair, FactoryReset (None/Force/All/Data/Check),
+  Reboot, LogLevel, Query, UpdateUserConf/SystemConf, firmware/board/FPGA
+  file lists, Remove (FPGA/BOARD/FIRMWARE/...), RestartWireless/Controller,
+  WirelessAP, AYMode (DMG/CB2), EdmgChannel(s), Diversity, UpdateParadeFw,
+  IsAX, AxChannel(s)
+- **Pairing** (158): PairingType (READ/SEND/SET/DONE/FAIL), Ssid, Psk,
+  BaseErrorMsg/HeadErrorMsg, BeginPairing, BaseCompleted/HeadCompleted,
+  PairingState (Unknown/None/Started/Success/Failure/Unpaired)
+- **Configuration** (145): DefaultConf/FactoryConf/UserConf/SystemConf/
+  ActualValues, each a list of ConfigurationItem{Key, Value}
+
+### Observed status payloads (live, decoded with the schema)
+
+```
+$ python3 scripts/nofio_probe.py state                # BaseStatus
+  WirelessLink = 1, ControllerInterface = 1, ControllerDevice = 1
+  CpuTemp = 57, FpgaTemp = 55, BasebandTemp = 42      (°C)
+  WirelessTxMcs = 7, WirelessRxMcs = 7
+  WirelessChannel = 13, ChannelFreq = 6015            (6 GHz, WiFi 6E)
+  RSSI = 97, Isax = 1
+  BridgeRxMaxSpeed = 206000
+  WirelessState = 260 (0x104: PairingSuccess, ConnectionOk)
+
+$ python3 scripts/nofio_probe.py state --target head  # HeadStatus (via base)
+  BaseStatus: CpuTemp = 60, FpgaTemp = 59, RSSI = 95, ChannelFreq = 5220
+  BridgeTxSpeed/BridgeRxSpeed = -1                    (no video source yet)
+  PeakUncompressedVideoTXSpeed64 = 2058000000
+  LeftBatteryCharge = 76, RightBatteryCharge = 1
+```
+
+LeftBatteryCharge tracks the USB-C powerpack that powers the head unit and
+discharges in real time (observed 96 -> 92 -> 88 -> 76 -> 70% over ~2 h of
+live session - consistent with the advertised ~2-2.5 h battery life). This is
+the value the original utility's VR battery overlay shows; it is NOT an Index
+controller charge. RightBatteryCharge is a second power input: the nofio head
+is designed for hot-swapping (verified online: nofio.co sells "Additional
+Hot Swap Battery (~2.5hrs)" packs; the Kickstarter-era FAQ states battery
+swapping takes ~20 seconds without restarting SteamVR, the head draws <15W
+over USB-C PD and any 20W USB-PD pack works - QC3.0 is not supported).
+With a single pack connected, RightBatteryCharge was observed pinned at 1%.
+
+Notes: `-1` (0xFF...) is the "not available" sentinel; repeated numeric fields
+are protobuf-packed; HeadStatus carries a nested BaseStatus with the head's
+own radio view (different ChannelFreq than the base). Status is served
+**on demand only** — while idle the head just echoes heartbeats and pushes
+nothing, so poll with `RequestStatus` to get fresh values (verified: the
+head's battery percentage updates between polls and never arrives unsolicited).
+
+The head unit's battery **percentage** is `LeftBatteryCharge`/`RightBatteryCharge`
+in HeadStatus: the head runs on EXTERNAL battery packs connected via USB-C
+(`PowerSource.ExternalBattery`), and these fields report each pack's charge
+level. The raw electrical telemetry (`PowerSource`, `VoltageIn`,
+`ChargeCurrent`, `BatteryVoltage`) has been observed absent/zero with a
+powerbank connected — possibly populated only while charging; capture one
+to confirm. The original utility's VR overlay displays exactly
+`LeftBatteryCharge` (fallback Right).
+
+### Try it from Linux
+
+Verified live against a base station connected over USB (CDC-Ethernet interface
+on 192.168.3.0/24), no drivers and no VirtualHere involved:
+
+```sh
+# firmware version of the base (no drivers, no VirtualHere)
+python3 scripts/nofio_probe.py status
+
+# firmware version of the head adapter, routed through the base
+python3 scripts/nofio_probe.py status --target head
+
+# decoded BaseStatus / HeadStatus (temperatures, WiFi, batteries)
+python3 scripts/nofio_probe.py state
+python3 scripts/nofio_probe.py state --target head
+
+# head battery percentage only (hot-swap powerpacks, single read or watch)
+python3 scripts/nofio_probe.py battery
+python3 scripts/nofio_probe.py battery --watch --interval 30
+
+# print everything the base sends for 10 s
+python3 scripts/nofio_probe.py monitor --duration 10
+
+# send an arbitrary message (type 128 = RequestStatus, body 0086 = expect SoftwareVersion)
+python3 scripts/nofio_probe.py raw 128 0086
+```
+
+Example `status` output (base, firmware v2.5.0):
+
+```
+=== 192.168.3.1:34566 ===
+station protocol version: 80
+SoftwareVersion reply:
+  release=release/v2.5.0
+  build=release/v2.5.0
+  buildroot=release/v2.5.0
+  imr_drivers=release/v2.5.0
+  imr_software=release/v2.5.0
+  linux=release/v2.5.0
+  mcu=major=2 minor=14
+  qca2066-lea=release/v2.5.0
+  fpga=spark-60 (f5ac868)|nofio1-te0803-03-3ae11-a_mipi_base|10-05-2024 23:47
+  hw_serial=240104-02E3-NI-b
+  is_fallback=0
+```
+
+The head adapter (`--target head`, routed via the base) reports the same
+software stack with board `..._dp_head`, its own serial
+(`240104-074D-NI-h`) and FPGA build timestamp.
 
 ## Direct USB Protocol **[Hypothetical]**
 

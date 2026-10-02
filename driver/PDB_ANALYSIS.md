@@ -146,3 +146,85 @@ To extract **complete** information from the PDB (function signatures, parameter
 - Class inheritance hierarchies
 - Variable names and types
 - Source line numbers
+
+---
+
+## Runtime Behavior (Reconstructed)
+
+Behavior below is reconstructed from the symbol set, class methods, and log
+strings embedded in the binary. Line-level confirmation requires disassembly
+(Ghidra/IDA) of `driver_nofio.dll` against this PDB.
+
+### Startup Flow
+
+1. SteamVR loads `driver_nofio.dll` and calls the only export,
+   `HmdDriverFactory` (RVA 0x16C0).
+2. `device_provider` (`IServerTrackedDeviceProvider_004`) `Init()` logs
+   `"Driver loaded, adding devices..."`, instantiates exactly one virtual
+   device, then logs `"Driver load complete!"`.
+3. `device_settings` (`ITrackedDeviceServerDriver_005`) `Activate()` logs
+   `"Settings device activated! Adding properties..."` and registers tracked
+   properties on SteamVR.
+4. The device serial / settings section is the string constant
+   `"nofio_settings"` (used with `IVRSettings_003`).
+
+### What the Settings Device Is
+
+- A **single stationary virtual device**: `GetPose()` returns a `DriverPose_t`
+  with a static pose (`bPoseIsValid` handling present in symbols). It does not
+  track anything.
+- It implements **no** display, camera, or direct-mode components. The
+  component interface strings found in the DLL (`IVRDisplayComponent_002`,
+  `IVRDriverDirectModeComponent_008`, `IVRCameraComponent_003`,
+  `IVRVirtualDisplay_002`) are the standard names queried through
+  `IDevice::GetComponent`, which returns `nullptr` for each.
+- `device_status` exists as a class in the PDB but adds no further device.
+
+### DLL Imports Analysis
+
+`driver_nofio.dll` (17 KB) imports only:
+
+| DLL | Imports | Meaning |
+|-----|---------|---------|
+| `kernel32.dll` | `GetCurrentProcess`, `QueryPerformanceCounter`, `InitializeSListHead`, ... | CRT boilerplate |
+| `VCRUNTIME140.dll` + `api-ms-win-crt-*` | `malloc`, `memcpy`, `strcmp`, exception handling | C runtime |
+
+**No `winusb`, `setupapi`, `ws2_32`, or any other I/O library is imported.**
+The driver performs **zero** USB, network, or display I/O.
+
+### Role in the Windows Stack
+
+Since the driver does no I/O, it is **not part of the streaming path**, even in
+the original Windows setup:
+
+```
+SteamVR -> native Valve Index driver (lighthouse) -> VirtualHere Client
+        -> 192.168.3.1:7575 (VirtualHere Server on base station) -> USB -> Index
+```
+
+`driver_nofio.dll` sits *beside* this chain: the `alwaysActivate: true`
+manifest plus the `nofio_settings` virtual device give `nofioUtility.exe` a
+permanent settings/status channel inside SteamVR (properties read/written via
+`IVRSettings_003` / `IVRProperties_001`). It is a companion device, not a
+functional dependency: the headset chain works without it.
+
+### Implications for nofio-linux
+
+1. **The binary cannot be used on Linux** (PE32+ x86-64, Windows-only). Its
+   only value is as an OpenVR API reference.
+2. **The function it performs is optional.** The streaming chain on Linux
+   (SteamVR native Index driver + VirtualHere Linux client) needs no custom
+   driver. A settings companion would only be reimplemented (small C++ `.so`)
+   for feature parity with `nofioUtility.exe`.
+3. **The "Target (Direct USB)" driver is new work.** A driver that talks to the
+   base station over libusb, bypassing VirtualHere, does not exist in the
+   original product; this artifact is not a starting point for it beyond
+   OpenVR API usage.
+4. **Upstream risk:** SteamVR for Linux is effectively unmaintained by Valve
+   (no significant updates since 2023). If the direct-USB target is pursued,
+   evaluating Monado/OpenXR as the runtime is advisable before investing in a
+   SteamVR Linux driver.
+
+**Recommendation:** declassify `nofio_driver` from "component to reimplement"
+to "documentation reference" for the Phase 2 driver skeleton. Priority stays
+on firmware, the USB/VirtualHere protocol, and the utility.

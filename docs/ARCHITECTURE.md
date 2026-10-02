@@ -52,15 +52,25 @@ The Nofio wireless VR system consists of the following components:
 
 ### 1. OpenVR Driver (driver_nofio)
 
-The SteamVR driver implements the following interfaces:
+> **Findings on the original binary** (`miscellaneous/Resources/nofio_driver`,
+> see [driver/PDB_ANALYSIS.md](../driver/PDB_ANALYSIS.md)): the original
+> `driver_nofio.dll` is a **settings/status companion device** — a single
+> stationary virtual device (`nofio_settings`) registered with
+> `alwaysActivate: true`. It performs **no USB, network, or display I/O**
+> (imports only CRT/`kernel32`) and is therefore **not part of the streaming
+> path**, which runs through SteamVR's native Valve Index (lighthouse) driver
+> over VirtualHere. On Linux the binary is unusable (PE32+) and its function
+> is optional; it is kept as an OpenVR API reference only.
 
-- **ITrackedDeviceServerDriver_005** - Main device interface
-- **IServerTrackedDeviceProvider_004** - Device provider interface
-- **IVRWatchdogProvider_001** - Watchdog interface
-- **IVRCompositorPluginProvider_001** - Compositor plugin interface
-- **IVRProperties_001** - Properties interface
-- **IVRDriverLog_001** - Logging interface
-- **IVRSettings_003** - Settings interface
+The interfaces actually implemented by the original binary's classes:
+
+- **ITrackedDeviceServerDriver_005** - Device interface (class `device_settings`)
+- **IServerTrackedDeviceProvider_004** - Provider interface (class `device_provider`)
+
+Interfaces referenced via the driver context / `GetComponent` (version strings
+present in the binary, no implementation): `IVRWatchdogProvider_001`,
+`IVRCompositorPluginProvider_001`, `IVRProperties_001`, `IVRDriverLog_001`,
+`IVRSettings_003`.
 
 #### Class Diagram
 
@@ -92,6 +102,9 @@ The SteamVR driver implements the following interfaces:
 ```
 
 #### File Structure
+
+The structure below describes the **planned reimplementation** for
+nofio-linux, not the original binary.
 
 ```
 driver/
@@ -205,6 +218,14 @@ PC Application → VirtualHere Client → Network (192.168.3.1:7575) → Virtual
 ```
 PC Application → OpenVR Driver → USB Interface → Base Station → WiFi → Head Adapter → Valve Index
 ```
+
+Note: no such driver exists in the original product. The original
+`driver_nofio.dll` does no I/O (settings companion only, see
+[driver/PDB_ANALYSIS.md](../driver/PDB_ANALYSIS.md)); a direct-USB driver is
+new work and the original artifact serves only as an OpenVR API reference.
+Also consider that SteamVR for Linux is effectively unmaintained by Valve
+(no significant updates since 2023): evaluate Monado/OpenXR as the runtime
+before investing in a SteamVR Linux driver.
 
 ## Data Structures
 

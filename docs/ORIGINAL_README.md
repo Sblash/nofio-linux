@@ -31,8 +31,8 @@ Thankfully, the VirtualHere client is available on Linux too, so... we can repro
 ## What do you need to do
 To start using the nofio on Linux, you need to:
 
-1) Download the file vhui.ini from this repo
-2) Download the VirtualHere client (you can find it in this repo as vhuit64_5.7.7 or on the [official site](https://www.virtualhere.com/))
+1) Create a `vhui.ini` file with the content shown in [PROTOCOL.md](PROTOCOL.md) ("VirtualHere Configuration (vhui.ini)"): the `EasyFindId`/`EasyFindPin` values are device-specific pairing credentials, which you find in the `vhui.ini` shipped with the official Nofio utility (in the `Resources` folder of its installation directory)
+2) Download the VirtualHere client for Linux Intel x64 (`vhuit64`) from the [official site](https://www.virtualhere.com/download) - version **5.7.7** is the one bundled by the Nofio utility and the one tested with this guide; later versions generally work too
 3) Place the VirtualHere client and the vhui.ini file wherever you want, but in the same folder
 4) Make sure that your Linux installation has the following kernel modules loaded:
 
@@ -83,11 +83,11 @@ https://github.com/user-attachments/assets/4f15f7c5-3617-412b-9e33-26c4838b7eb2
 10) If you have correctly configured the network connection and connected to it, you should see an IP like 192.168.3.49 listed when you enter "ifconfig" in the terminal. If so, you're in (... the nofio network)
 11) Turn on the Nofio head. In the terminal, navigate to the folder where you put the VirtualHere client and run:
     ```
-    chmod +x vhuit64_5.7.7
+    chmod +x vhuit64
     ```
     To instead start the VirtualHere client use:
     ```
-    sudo ./vhuit64_5.7.7
+    sudo ./vhuit64
     ```
     You should see something like this:
     
