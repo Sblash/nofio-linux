@@ -195,6 +195,39 @@ statistics exposed in the support report (`src_port: 44444`), and
 channel — together these document the video path: raw video flows over UDP
 44444 on the wireless link while control uses TCP 34566.
 
+#### Head vs base configuration (live, paired link, fw v2.5.0)
+
+With the head on and paired, the same reads work against the head through
+base routing (`--target head`). `HeadStatus` additionally reports the video
+link state (live sample: Wireless MCS 7 both ways, RSSI 49,
+PeakUncompressedVideoTXSpeed 2.06 Gbps, head batteries 1 %/1 %, head FPGA
+bitfile `nofio1-te0803-03-4ae11-a_dp_head`). The configuration difference
+between the roles is the interesting part:
+
+| Key | Base | Head | Meaning |
+|---|---|---|---|
+| `wi_mode` | `ap` | `sta` | base is the 60 GHz AP, head is the station |
+| `wi_addr` | `10.0.0.1/28` | `10.0.0.2/28` | wireless link addressing |
+| `usb0_addr` | `192.168.3.1/24` | `192.168.4.1/24` | PC-facing gadget networks |
+| `usb1_dir` | `peripheral` | `host` | the head's second USB port is a **USB host** — presumably where the Valve Index connects |
+
+Keys that exist **only on the base** (the encoder side): all `rate_control_*`
+(PID bitrate adaptation), `packet_size = 7828`, `max_packet_blocks = 1280`,
+all `fov_*` foveation parameters, `foveation_en`.
+
+Keys that exist **only on the head** (the display side):
+`video_buffer_delay = 10500000`, `video_buffer_catchup/margin` (ns — the
+display-side buffering), `loss_time = 950`, `cache_time`,
+`bridge_error_color = tracking_grey`, `additional_splash_screen_dir =
+/etc/sink/frame`, `source_overlay_*`, `dp_vswing = 3` (DisplayPort drive
+strength), `force_ycc*`, `sync_gpio = 416`,
+`wireless_blocked_threshold = 60`.
+
+In short: **encoding decisions (rate control, foveation, packetization) live
+on the base; display timing, buffering and the DisplayPort link live on the
+head.** The `usb1_dir = host` finding also explains the head's two USB-C
+ports: one gadget port toward the PC, one host port toward the headset.
+
 ### Packet framing (big-endian)
 
 ```
